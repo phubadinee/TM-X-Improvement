@@ -3,7 +3,7 @@ from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import FTPServer
 
-# ================= CONFIGURATION =================
+# ================= RECEIVER CONFIGURATION =================
 IMAGE_DIR = r"D:\\MatchaLatte\\TM-X_Improvement\\images"
 FTP_USER = "INTERN_USER"
 FTP_PASS = "123456"

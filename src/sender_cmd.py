@@ -1,9 +1,9 @@
 import socket
 
 # ================= TM-X CONFIGURATION =================
-TMX_IP = "192.168.10.10"       # TM-X Controller IP address
-TMX_COMMAND_PORT = 8600       # Command port (typically 8500 for Keyence)
-TRIGGER_COMMAND = "T1\r"      # Keyence trigger command (Carriage Return '\r' is required)
+TMX_IP = "192.168.10.11" 
+TMX_COMMAND_PORT = 8600       
+TRIGGER_COMMAND = "T1\r"     
 # ======================================================
 
 def send_trigger():
