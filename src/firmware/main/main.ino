@@ -36,7 +36,7 @@ const int mainMenuSize = sizeof(mainMenu) / sizeof(mainMenu[0]);
 const char* opMenu[] = { "< Back", "System Homing", "Start", "Detect Part", "Align Part", "Trig & Wait TM-X", "Transition Push", "Sort Execute", "Emergency Halt" };
 const int opMenuSize = sizeof(opMenu) / sizeof(opMenu[0]);
 
-const char* pmMenu[] = { "< Back", "Manual Jogging", "IO Testing", "Dry Run" };
+const char* pmMenu[] = { "< Back", "Manual Jogging", "IO Testing", "Dry Run", "Pi Monitor" };
 const int pmMenuSize = sizeof(pmMenu) / sizeof(pmMenu[0]);
 
 const char* calMenu[] = { "< Back", "Actuator Stroke", "Sorter Offset", "Servo Transition" };
@@ -111,12 +111,10 @@ void loop() {
   // Serial.println(limit_servo_val);
 
   // int st188_val = analogRead(st188Pin);
-  // // Serial.print("ST188 Value : ");        
-  // // Serial.println(st188_val);        
+  // // Serial.print("ST188 Value : ");
+  // // Serial.println(st188_val);
   // int st188_val_map = map(st188_val, 0, 1023, 0, 100);
-  // Serial.print("ST188 Value Map : ");        
-  // Serial.println(st188_val_map); 
+  // Serial.print("ST188 Value Map : ");
+  // Serial.println(st188_val_map);
   // delay(100);
-
-  uart_test();
 }

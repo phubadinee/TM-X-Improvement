@@ -22,8 +22,22 @@ def read_from_port(ser):
             if ser.in_waiting > 0:
                 reading = ser.readline().decode('utf-8').strip()
                 if reading:
-                    # Print received message and reprint the input prompt
+                    # Print received message
                     sys.stdout.write(f"\r\033[K[Received from Mega] {reading}\n")
+                    
+                    # --- NEW: Automated TM-X Measurement Logic ---
+                    if reading == "TRIGGER_TMX":
+                        sys.stdout.write(f"\033[K[Action] TM-X triggered. Simulating measurement for 1 second...\n")
+                        time.sleep(1) # Simulate time taken by TM-X camera to measure
+                        
+                        # Decide result (you can add logic here to parse real TM-X data)
+                        result = "MEASURE_OK" 
+                        
+                        ser.write((result + '\n').encode('utf-8'))
+                        sys.stdout.write(f"\033[K[Sent to Mega] {result}\n")
+                    # ---------------------------------------------
+                    
+                    # Reprint the input prompt
                     sys.stdout.write("Enter message to send: ")
                     sys.stdout.flush()
         except Exception as e:
