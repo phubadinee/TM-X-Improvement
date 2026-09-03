@@ -36,10 +36,6 @@ int runDetectPart(){
 
 void runAlignPart() {
   showActionMessage("Aligning Part...");
-  delay(1000);
-}
-
-void runTrigWaitTMX() {
-  showActionMessage("Trig & Wait TM-X...");
-  delay(1000);
+  delay(1000); 
+  Serial.println("Part aligned in center.");
 }
