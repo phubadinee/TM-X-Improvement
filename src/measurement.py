@@ -241,4 +241,4 @@ def process_and_measure(image_path):
 
 
 # --- รันโปรแกรม ---
-process_and_measure("images\\alpl5x5full.png")
+process_and_measure("D:\\MatchaLatte\\TM-X_Improvement\\images\\test.png")
