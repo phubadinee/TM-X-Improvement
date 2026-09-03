@@ -1,99 +1,94 @@
 import serial
 import time
-import threading
-import sys
 import glob
+import sys
 
-# Set the baud rate to match the Arduino code
-BAUD_RATE = 115200
+# ── Config ────────────────────────────────────────────────────────────────────
+BAUD_RATE   = 115200
+TIMEOUT_SEC = 1
 
-def find_arduino_port():
-    """Automatically find the USB port the Arduino is connected to"""
-    # Arduino Megas usually show up as ttyACM* or ttyUSB*
-    ports = glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyUSB*')
-    if not ports:
-        return None
-    return ports[0] # Return the first found port
+# Protocol tokens
+CMD_TRIGGER     = "[TRIGGER_TMX]"
+ACK_TRIGGER     = "[TRIGGER_TMX_ACK]"
+# ─────────────────────────────────────────────────────────────────────────────
 
-def read_from_port(ser):
-    """Background thread to continuously read data from USB Serial"""
-    while True:
+
+def find_mega_port() -> str | None:
+    """Return the first USB/ACM port where the Mega 2560 is detected."""
+    ports = glob.glob("/dev/ttyACM*") + glob.glob("/dev/ttyUSB*")
+    return ports[0] if ports else None
+
+
+def receive(ser: serial.Serial) -> str | None:
+    """
+    Read one line from the Mega.
+    Returns the decoded, stripped string, or None if nothing arrived.
+    """
+    if ser.in_waiting > 0:
         try:
-            if ser.in_waiting > 0:
-                reading = ser.readline().decode('utf-8').strip()
-                if reading:
-                    # Print received message
-                    sys.stdout.write(f"\r\033[K[Received from Mega] {reading}\n")
-                    
-                    # --- NEW: Automated TM-X Measurement Logic ---
-                    if reading == "TRIGGER_TMX":
-                        sys.stdout.write(f"\033[K[Action] TM-X triggered. Simulating measurement for 1 second...\n")
-                        time.sleep(1) # Simulate time taken by TM-X camera to measure
-                        
-                        # Decide result (you can add logic here to parse real TM-X data)
-                        result = "MEASURE_OK" 
-                        
-                        ser.write((result + '\n').encode('utf-8'))
-                        sys.stdout.write(f"\033[K[Sent to Mega] {result}\n")
-                    # ---------------------------------------------
-                    
-                    # Reprint the input prompt
-                    sys.stdout.write("Enter message to send: ")
-                    sys.stdout.flush()
-        except Exception as e:
-            print(f"\nError reading from serial: {e}")
-            break
+            line = ser.readline().decode("utf-8").strip()
+            if line:
+                return line
+        except UnicodeDecodeError:
+            pass
+    return None
 
-def main():
-    SERIAL_PORT = find_arduino_port()
-    
-    if not SERIAL_PORT:
-        print("Error: Could not find an Arduino connected via USB.")
-        print("Please ensure the Arduino is plugged into the Raspberry Pi.")
-        return
+
+def send(ser: serial.Serial, message: str) -> None:
+    """Send a message string (+ newline) to the Mega."""
+    ser.write((message + "\n").encode("utf-8"))
+    print(f"[TX → Mega] {message}")
+
+
+def handle_message(ser: serial.Serial, msg: str) -> None:
+    """
+    Dispatch logic for every message received from the Mega.
+    Add more elif branches here as the protocol grows.
+    """
+    print(f"[RX ← Mega] {msg}")
+
+    if msg == CMD_TRIGGER:
+        # Mega is asking Pi to trigger TM-X measurement
+        print("[INFO] Trigger received — sending ACK")
+        send(ser, ACK_TRIGGER)
+
+    # ── extend protocol here ──────────────────────────────────────────────
+    # elif msg == "[OTHER_CMD]":
+    #     send(ser, "[OTHER_CMD_ACK]")
+    # ─────────────────────────────────────────────────────────────────────
+
+
+def pi_uart() -> None:
+    """
+    Main UART loop.
+    Connects to the Mega 2560 and continuously:
+      - Receives commands
+      - Dispatches to handle_message()
+    """
+    port = find_mega_port()
+    if not port:
+        print("[ERROR] No Arduino/Mega found on USB. Check connection.")
+        sys.exit(1)
+
+    print(f"[INFO] Connecting to Mega on {port} @ {BAUD_RATE} baud ...")
 
     try:
-        # Open serial port
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-        ser.flush()
-        
-        # When opening USB serial, the Arduino might auto-reset. 
-        # Wait a moment for it to boot up.
-        print(f"Connected to {SERIAL_PORT} at {BAUD_RATE} baud. Waiting 2 seconds for Arduino to boot...")
-        time.sleep(2)
-        
-        # Start a thread to listen for incoming data
-        read_thread = threading.Thread(target=read_from_port, args=(ser,))
-        read_thread.daemon = True
-        read_thread.start()
-        
-        # Main loop to send data
-        print("\nType your message and press Enter to send to Mega.")
-        print("Type 'exit' to quit.\n")
-        
-        while True:
-            # We use sys.stdout for better formatting with the async receive thread
-            sys.stdout.write("Enter message to send: ")
-            sys.stdout.flush()
-            message = sys.stdin.readline().strip()
-            
-            if message.lower() == 'exit':
-                break
-                
-            if message:
-                # Send the message with a newline character
-                ser.write((message + '\n').encode('utf-8'))
-                sys.stdout.write(f"\r\033[K[Sent to Mega] {message}\n")
-            
-    except serial.SerialException as e:
-        print(f"\nSerial Error: {e}")
-        print("\nTroubleshooting:")
-        print("1. Check permissions: Run 'sudo usermod -a -G dialout $USER' and reboot your Pi.")
-    except KeyboardInterrupt:
-        print("\nExiting...")
-    finally:
-        if 'ser' in locals() and ser.is_open:
-            ser.close()
+        with serial.Serial(port, BAUD_RATE, timeout=TIMEOUT_SEC) as ser:
+            ser.reset_input_buffer()
+            time.sleep(2)   # Let Mega finish boot / auto-reset
+            print("[INFO] Ready. Waiting for commands from Mega...\n")
 
-if __name__ == '__main__':
-    main()
+            while True:
+                msg = receive(ser)
+                if msg:
+                    handle_message(ser, msg)
+
+    except serial.SerialException as e:
+        print(f"[ERROR] Serial: {e}")
+        print("[HINT]  Run: sudo usermod -a -G dialout $USER  then reboot")
+    except KeyboardInterrupt:
+        print("\n[INFO] Stopped by user.")
+
+
+if __name__ == "__main__":
+    pi_uart()
