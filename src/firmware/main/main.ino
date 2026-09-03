@@ -50,10 +50,14 @@ int limit_servo = 30;
 int limit_servo_state = 0;
 Servo myServo;
 int servo_stop = 90;
-int servo_forward = 50;
+int servo_forward_slow = 50;
+int servo_forward_fast = 0;
 int servo_backward = 100;
 
 const int st188Pin = A1;
+
+// Communication
+unsigned long lastSendTime = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -113,4 +117,6 @@ void loop() {
   // Serial.print("ST188 Value Map : ");        
   // Serial.println(st188_val_map); 
   // delay(100);
+
+  uart_test();
 }
