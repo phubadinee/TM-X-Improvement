@@ -1,4 +1,7 @@
 void runSortExecute() {
   showActionMessage("Sort Execute...");
-  delay(1000);
+  Serial.println("======= [Start] Sort Execute =======");
+  load_beep();  
+  Serial.println("======= [End] Sort Execute =======");Serial.println();
+
 }

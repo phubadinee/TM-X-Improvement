@@ -99,14 +99,14 @@ void executeMenuAction() {
         // ------------------------------------
         case 1:
           switch (cursorIndex) {
-            case 1: runSystemHoming(); break;    // "System Homing"
-            case 2: runStart(); break;           // "Start"
-            case 3: runDetectPart(); break;      // "Detect Part"
-            case 4: runAlignPart(); break;       // "Align Part"
-            case 5: runTrigWaitTMX(); break;     // "Trig & Wait TM-X"
-            case 6: runTransitionPush(); break;  // "Transition Push"
-            case 7: runSortExecute(); break;     // "Sort Execute"
-            case 8: runEmergencyHalt(); break;   // "Emergency Halt"
+            case 1: runSystemHoming(); break;    // "System Homing"             on going
+            case 2: runStart(); break;           // "Start"                     Done
+            case 3: runDetectPart(); break;      // "Detect Part"               Done
+            case 4: runAlignPart(); break;       // "Align Part"                wait order part 
+            case 5: runTrigWaitTMX(); break;     // "Trig & Wait TM-X"          Done
+            case 6: runTransitionPush(); break;  // "Transition Push"           Done
+            case 7: runSortExecute(); break;     // "Sort Execute"              on going 
+            case 8: runEmergencyHalt(); break;   // "Emergency Halt" on going 
           }
           break;
 
@@ -154,14 +154,3 @@ void showActionMessage(const char* actionName) {
   display.display();
 }
 
-
-void runSystemHoming() {
-  showActionMessage("System Homing...");
-  delay(1500);
-}
-
-
-void runEmergencyHalt() {
-  showActionMessage("! EMERGENCY HALT !");
-  delay(2000);  // ให้อ่านนานหน่อย
-}

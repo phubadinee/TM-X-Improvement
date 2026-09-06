@@ -5,6 +5,16 @@ void runManualJogging() {
 
 void runIOTesting() {
   showActionMessage("I/O Testing...");
+  while (1) {
+    int st188_val = analogRead(st188Pin);
+    // Serial.print("ST188 Value : ");
+    // Serial.println(st188_val);
+    int st188_val_map = map(st188_val, 0, 1023, 0, 100);
+    Serial.print("ST188 Value Map : ");
+    Serial.println(st188_val_map);
+
+  }
+
   delay(1500);
 }
 
@@ -38,7 +48,7 @@ void runPiMonitor() {
   display.display();
 
   // Wait until SW is released if it was just pressed
-  while(digitalRead(SW_PIN) == LOW) {
+  while (digitalRead(SW_PIN) == LOW) {
     delay(10);
   }
   delay(100);
@@ -51,7 +61,7 @@ void runPiMonitor() {
       if (digitalRead(SW_PIN) == LOW) {
         exitMonitor = true;
         // Wait until SW is released
-        while(digitalRead(SW_PIN) == LOW) {
+        while (digitalRead(SW_PIN) == LOW) {
           delay(10);
         }
       }

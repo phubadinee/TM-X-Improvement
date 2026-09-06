@@ -1,5 +1,6 @@
 void runTransitionPush() {
   showActionMessage("Transition Push...");
+  Serial.println("======= [Start] Transition Push =======");
 
   while (digitalRead(limit_servo) == 1) {
     myServo.write(servo_forward_fast);
@@ -8,5 +9,7 @@ void runTransitionPush() {
   myServo.write(servo_backward);
   delay(3000);
 
-  myServo.write(servo_stop);
+  myServo.write(servo_stop);  
+  Serial.println("======= [End] Transition Push =======");Serial.println();
+
 }

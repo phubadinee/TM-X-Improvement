@@ -6,3 +6,15 @@ void runStart() {
   runSortExecute();
   runTransitionPush();   // 4-6. Actuator retracts, servo pushes, servo retracts
 }
+
+void runSystemHoming() {
+  showActionMessage("System Homing...");
+  runTransitionPush();
+  delay(1500);
+}
+
+
+void runEmergencyHalt() {
+  showActionMessage("! EMERGENCY HALT !");
+  delay(2000);  // ให้อ่านนานหน่อย
+}

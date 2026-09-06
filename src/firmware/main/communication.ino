@@ -4,7 +4,7 @@ void runTrigWaitTMX() {
   while(Serial.available() > 0) Serial.read();
 
   // Send to Rasp pi
-  Serial.println("TRIGGER_TMX");
+  Serial.println("[TRIGGER_TMX]");
   
   bool receivedAck = false;
   while(!receivedAck) {
@@ -12,7 +12,7 @@ void runTrigWaitTMX() {
       String response = Serial.readStringUntil('\n');
       response.trim();
       
-      if (response == "MEASURE_OK" || response == "MEASURE_NG") {
+      if (response == "[MEASURE_OK]" || response == "[MEASURE_NG]") {
         receivedAck = true;
       }
     }

@@ -107,14 +107,4 @@ void loop() {
     lastMenu = currentMenu;
   }
 
-  // int limit_servo_val = digitalRead(limit_servo);
-  // Serial.println(limit_servo_val);
-
-  // int st188_val = analogRead(st188Pin);
-  // // Serial.print("ST188 Value : ");
-  // // Serial.println(st188_val);
-  // int st188_val_map = map(st188_val, 0, 1023, 0, 100);
-  // Serial.print("ST188 Value Map : ");
-  // Serial.println(st188_val_map);
-  // delay(100);
 }

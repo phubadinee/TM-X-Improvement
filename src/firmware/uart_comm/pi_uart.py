@@ -9,7 +9,7 @@ TIMEOUT_SEC = 1
 
 # Protocol tokens
 CMD_TRIGGER     = "[TRIGGER_TMX]"
-ACK_TRIGGER     = "[TRIGGER_TMX_ACK]"
+ACK_TRIGGER     = "[MEASURE_OK]"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -50,6 +50,7 @@ def handle_message(ser: serial.Serial, msg: str) -> None:
     if msg == CMD_TRIGGER:
         # Mega is asking Pi to trigger TM-X measurement
         print("[INFO] Trigger received — sending ACK")
+        input("Press Enter to send ACK")
         send(ser, ACK_TRIGGER)
 
     # ── extend protocol here ──────────────────────────────────────────────

@@ -15,3 +15,10 @@ void long_beep(){
 void for_beep(){
   beep();beep();beep();
 }
+
+void load_beep(){
+  for(int i=0;i<5;i++){
+    beep();
+    delay(500);
+  }
+}

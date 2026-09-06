@@ -11,23 +11,17 @@ int read_st188(){
 
 int runDetectPart(){
   showActionMessage("Detecting Part...");
+  Serial.println("======= [Start] Detecting Part =======");
   delay(1000);
   int detect_val = read_st188(); 
-  // if (detect_val >= 60){
-  //   detect_status = 0;
-  //   Serial.println("No Detect");
-  // } else {
-  //   detect_status = 1;
-  //   // for_beep();
-  //   Serial.println("Detected");
-  // }
 
-  while (detect_val >= 60){
+  while (detect_val >= 80){
     showActionMessage("No Part...");
     detect_val = read_st188();
-    Serial.println(detect_val);
+//    Serial.println(detect_val);
   }
   showActionMessage("Part Detected !!!");
+  Serial.println("======= [End] Detecting Part =======");Serial.println();
   beep();
   delay(1000);
 
@@ -35,7 +29,8 @@ int runDetectPart(){
 }
 
 void runAlignPart() {
-  showActionMessage("Aligning Part...");
-  delay(1000); 
-  Serial.println("Part aligned in center.");
+  showActionMessage("Aligning Part...");  
+  Serial.println("======= [Start] Part aligned in center =======");
+  load_beep();
+  Serial.println("======= [End] Part aligned in center =======");Serial.println();
 }
