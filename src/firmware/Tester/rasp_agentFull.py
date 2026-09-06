@@ -37,6 +37,19 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+
+
+# ── ตั้ง logging ─────────────────────────────────────────────────────────
+# ทุกบรรทัดจะมี timestamp นำหน้า จำเป็นตอนรันเป็น service แบบไม่มีหน้าต่าง
+# แล้วมาเปิดไฟล์ log อ่านทีหลัง — ไม่มีเวลากำกับจะไล่ลำดับเหตุการณ์ไม่ได้เลย
+#
+# ⚠ ป้าย [Pi] ไว้แยกจาก [Server] ของ Backend เวลาเอา log 2 เครื่องมาวางเทียบกัน
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [Pi] %(message)s")
+log = logging.getLogger(__name__)
+
+
 # new
 ########################
 import glob
@@ -65,18 +78,6 @@ log.info("[INFO] Mega Serial Connected Successfully.")
 
 
 
-
-
-
-# ── ตั้ง logging ─────────────────────────────────────────────────────────
-# ทุกบรรทัดจะมี timestamp นำหน้า จำเป็นตอนรันเป็น service แบบไม่มีหน้าต่าง
-# แล้วมาเปิดไฟล์ log อ่านทีหลัง — ไม่มีเวลากำกับจะไล่ลำดับเหตุการณ์ไม่ได้เลย
-#
-# ⚠ ป้าย [Pi] ไว้แยกจาก [Server] ของ Backend เวลาเอา log 2 เครื่องมาวางเทียบกัน
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [Pi] %(message)s")
-log = logging.getLogger(__name__)
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 TMX_IP = os.getenv("TMX_HOST", "192.168.10.11")
