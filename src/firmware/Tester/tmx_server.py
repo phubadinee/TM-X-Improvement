@@ -39,7 +39,8 @@ def start_mock_tmx():
                             if val_input.strip():
                                 latest_vals = val_input.strip()
                             
-                            time.sleep(2) ################################################################
+                            print("time.sleep(11)")
+                            time.sleep(11) ################################################################
                             # ตอบรับ T1 กลับไปว่าสำเร็จ
                             conn.sendall(b"T1\r")
                             print(f"[Mock TM-X] T1 acknowledged. Saved values: {latest_vals}")
