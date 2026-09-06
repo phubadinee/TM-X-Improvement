@@ -80,7 +80,7 @@ log.info("[INFO] Mega Serial Connected Successfully.")
 
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
-TMX_IP = os.getenv("TMX_HOST", "192.168.10.11")
+TMX_IP = os.getenv("TMX_HOST", "192.168.0.11")
 TMX_PORT = int(os.getenv("TMX_PORT", 8600))
 BUFFER_SIZE = 1024
 
