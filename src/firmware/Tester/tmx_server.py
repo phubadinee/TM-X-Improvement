@@ -1,4 +1,5 @@
 import socket
+import time
 
 HOST = '0.0.0.0'
 PORT = 8600
@@ -32,10 +33,13 @@ def start_mock_tmx():
                             
                         # 1. เมื่อ Pi สั่ง T1 (Trigger) -> ให้เราพิมพ์ค่าที่ต้องการตรงนี้
                         elif command == 'T1':
-                            val_input = input("Enter measurement values (e.g. 5.05,5.01): ")
+                            # val_input = input("Enter measurement values (e.g. 5.05,5.01): ")
+                            val_input = "5.0,5.0"
+                            print(f"Value -------------------> {val_input}")                            
                             if val_input.strip():
                                 latest_vals = val_input.strip()
                             
+                            time.sleep(2) ################################################################
                             # ตอบรับ T1 กลับไปว่าสำเร็จ
                             conn.sendall(b"T1\r")
                             print(f"[Mock TM-X] T1 acknowledged. Saved values: {latest_vals}")

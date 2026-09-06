@@ -103,7 +103,7 @@ GM_MAX_WAIT      = float(os.getenv("GM_MAX_WAIT", 8))    # รอค่าสู
 NO_VALUE_ABS     = 9999.0        # |ค่า| >= นี้ = TM-X ยังวัดไม่เสร็จ/วัดไม่ติด
 # T1 ที่โดน ER,...,03 (READY ยังไม่กลับมาหลัง RESET ที่พ่วงมากับ PW) ยิงซ้ำได้
 
-T1_RETRY = int(os.getenv("T1_RETRY", 3))
+T1_RETRY = int(os.getenv("T1_RETRY", 10))
 T1_RETRY_WAIT = float(os.getenv("T1_RETRY_WAIT", 0.3))
 
 MAX_ASK_USER_ROUNDS = int(os.getenv("MAX_ASK_USER_ROUNDS", 3))
