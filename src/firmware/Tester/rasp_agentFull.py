@@ -97,7 +97,7 @@ MEASURE_TIMEOUT       = float(os.getenv("MEASURE_TIMEOUT", 15))    # รอค�
 MEASURE_POLL_INTERVAL = float(os.getenv("MEASURE_POLL_INTERVAL", 0.4))
 
 # ── GM: ดึงค่าที่วัดได้จาก TM-X โดยตรง ──────────────────────────────────────
-SOCKET_TIMEOUT   = float(os.getenv("SOCKET_TIMEOUT", 5))
+SOCKET_TIMEOUT   = float(os.getenv("SOCKET_TIMEOUT", TRIGGER_TIMEOUT))
 GM_POLL_INTERVAL = 0.02                                  # 20 ms
 GM_MAX_WAIT      = float(os.getenv("GM_MAX_WAIT", 8))    # รอค่าสูงสุดต่อชิ้น
 NO_VALUE_ABS     = 9999.0        # |ค่า| >= นี้ = TM-X ยังวัดไม่เสร็จ/วัดไม่ติด
