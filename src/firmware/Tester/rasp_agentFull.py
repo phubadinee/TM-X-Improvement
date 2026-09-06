@@ -37,6 +37,37 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+# new
+########################
+import glob
+import serial
+
+# ── Serial Config สำหรับเชื่อมต่อ Arduino Mega ──────────────────────────────
+BAUD_RATE   = 115200
+TIMEOUT_SEC = 1
+
+def find_mega_port() -> str | None:
+    """ค้นหาพอร์ต USB ที่เชื่อมต่อกับ Mega 2560 อัตโนมัติ"""
+    ports = glob.glob("/dev/ttyACM*") + glob.glob("/dev/ttyUSB*")
+    return ports[0] if ports else None
+
+# ทำการเชื่อมต่อ Serial ทันทีที่รันสคริปต์
+port = find_mega_port()
+if not port:
+    log.error("[ERROR] No Arduino/Mega found on USB. Check connection.")
+    sys.exit(1)
+
+log.info(f"[INFO] Connecting to Mega on {port} @ {BAUD_RATE} baud ...")
+mega_ser = serial.Serial(port, BAUD_RATE, timeout=TIMEOUT_SEC)
+time.sleep(2)  # รอ Mega รีเซ็ตตัวเองหลังเชื่อมต่อ
+log.info("[INFO] Mega Serial Connected Successfully.")
+#########################
+
+
+
+
+
+
 # ── ตั้ง logging ─────────────────────────────────────────────────────────
 # ทุกบรรทัดจะมี timestamp นำหน้า จำเป็นตอนรันเป็น service แบบไม่มีหน้าต่าง
 # แล้วมาเปิดไฟล์ log อ่านทีหลัง — ไม่มีเวลากำกับจะไล่ลำดับเหตุการณ์ไม่ได้เลย
@@ -283,15 +314,25 @@ def get_measured_count(session_id):
             return None
         return _mock_db["measured_count"]
 
+
+# new
 # รอ Trigger จาก MCU
 def wait_for_trigger_mcu():
+    """รอสัญญาณ <TRIGGER_TMX> จาก MCU ผ่าน Serial"""
     log.info("   ⏳ รอสัญญาณจาก MCU ... (กด Stop เพื่อยกเลิก)")
     while is_running:
-        # 👇 แก้ตรงนี้ให้ เมื่อ MCU บอกชิ้นงานพร้อมแล้วให้ return True
-
-
-        time.sleep(0.1)
+        if mega_ser.in_waiting > 0:
+            try:
+                line = mega_ser.readline().decode("utf-8").strip()
+                if line == "<TRIGGER_TMX>":
+                    log.info("   📥 [RX ← Mega] ได้รับคำสั่ง <TRIGGER_TMX> แล้ว")
+                    return True
+            except UnicodeDecodeError:
+                pass
+        time.sleep(0.05)
     return False           # ออกจาก loop เพราะโดน Stop จาก Backend และ return False
+
+
 
 def send_recv(sock, command, timeout=SOCKET_TIMEOUT):
     """ส่ง 1 คำสั่ง แล้ว **วน recv จนเจอ CR** — คืน (response, ok)
@@ -540,11 +581,21 @@ def get_measurement_tmx(sock, limits, timeout=GM_MAX_WAIT):
              "— TM-X วัดชิ้นนี้ไม่ติด", timeout, polls)
     return "UNKNOWN", None, None, None, None, None, None, None, None
 
+# new
 #วนไปถามว่าพร้อมรับ result ยัง ให้ MCU set Flag เอา idle(ยังไม่มีชิ้นงาน) -> obj_is_ready(เมื่อวางชิ้นงานแล้ว) -> waiting_for_result(พร้อมรับ result) -> idle(เสร็จการวัด 1 ชิ้น)
 def send_result_to_mcu(result, mcu_timeout=MCU_TIMEOUT):
-
+    """ส่งผลการวัด (OK/NG) กลับไปหา MCU ผ่าน Serial"""
     icon = {"OK": "✅", "NG": "❌", "UNKNOWN": "❓"}.get(result, "•")
     log.info("   🔀 → MCU: %s %s", icon, result)
+    
+    # กำหนด Token ที่จะส่งกลับหา Mega ตามผลลัพธ์
+    if result == "OK":
+        ack_msg = "<MEASURE_OK>\n"
+    else:
+        ack_msg = "<MEASURE_NG>\n"
+        
+    mega_ser.write(ack_msg.encode("utf-8"))
+    log.info(f"   [TX → Mega] {ack_msg.strip()}")
     return True
 
 
