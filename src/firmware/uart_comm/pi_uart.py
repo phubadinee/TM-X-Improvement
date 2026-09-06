@@ -8,8 +8,8 @@ BAUD_RATE   = 115200
 TIMEOUT_SEC = 1
 
 # Protocol tokens
-CMD_TRIGGER     = "[TRIGGER_TMX]"
-ACK_TRIGGER     = "[MEASURE_OK]"
+CMD_TRIGGER     = "<TRIGGER_TMX>"
+ACK_TRIGGER     = "<MEASURE_NG>"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -45,7 +45,7 @@ def handle_message(ser: serial.Serial, msg: str) -> None:
     Dispatch logic for every message received from the Mega.
     Add more elif branches here as the protocol grows.
     """
-    print(f"[RX ← Mega] {msg}")
+    print(f"[RX ← Mega] {msg}\n")
 
     if msg == CMD_TRIGGER:
         # Mega is asking Pi to trigger TM-X measurement
