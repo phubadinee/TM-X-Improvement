@@ -85,7 +85,7 @@ TMX_PORT = int(os.getenv("TMX_PORT", 8600))
 BUFFER_SIZE = 1024
 
 TRIGGER_COMMAND = "T1\r"
-TRIGGER_TIMEOUT = 2.0  # วินาที — รอ response จาก TM-X หลังส่ง trigger
+TRIGGER_TIMEOUT = 10.0  # วินาที — รอ response จาก TM-X หลังส่ง trigger
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 AGENT_PORT = int(os.getenv("AGENT_PORT", 9998))
@@ -881,7 +881,7 @@ async def mock_start(count: int = 1, template: str = "201"):
         groups=[Group(
             template_name=template,
             alpl=list(range(201, 201 + count)),
-            limits=Limits(x_lo=0.0, x_hi=9999.0, y_lo=0.0, y_hi=9999.0,
+            limits=Limits(x_lo=5.0, x_hi=5.03, y_lo=5.0, y_hi=5.03,
                           offset_max=None),
         )],
     )

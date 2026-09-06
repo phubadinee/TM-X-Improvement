@@ -1,12 +1,12 @@
 import socket
 
-# รับการเชื่อมต่อจากทุก IP ในวง LAN
 HOST = '0.0.0.0'
-PORT = 8600 #[cite: 4]
+PORT = 8600
 
 def start_mock_tmx():
     print(f"[Mock TM-X] Starting server on Port {PORT}...")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((HOST, PORT))
         s.listen()
         print("[Mock TM-X] Waiting for connection from Pi...")
@@ -15,19 +15,50 @@ def start_mock_tmx():
             conn, addr = s.accept()
             with conn:
                 print(f"\n[Mock TM-X] Connected by {addr}")
-                data = conn.recv(1024)
-                
-                if data:
-                    command = data.decode('ascii').strip()
-                    print(f"[Mock TM-X] Received command: {command}")
-                    
-                    if command == 'T1': #[cite: 4]
-                        # สามารถเปลี่ยนเลขตรงนี้เพื่อทดสอบ Condition ต่างๆ ฝั่ง Pi 
-                        # เช่น เปลี่ยนเป็น "5.02,5.01\r" เพื่อจำลองค่า OK
-                        response_ = input("enter value of measurement : ")
-                        response = response_ + "\r" 
-                        conn.sendall(response.encode('ascii'))
-                        print(f"[Mock TM-X] Sent data: {response.strip()}")
+                latest_vals = "5.05,5.01" # ค่าสำรองเริ่มต้น
+                try:
+                    while True:
+                        data = conn.recv(1024)
+                        if not data:
+                            break
+                        
+                        command = data.decode('ascii', errors='ignore').strip()
+                        print(f"[Mock TM-X] Received command: {command}")
+                        
+                        if command.startswith("R0"):
+                            conn.sendall(b"R0\r")
+                        elif command.startswith("PW"):
+                            conn.sendall(b"PW\r")
+                            
+                        # 1. เมื่อ Pi สั่ง T1 (Trigger) -> ให้เราพิมพ์ค่าที่ต้องการตรงนี้
+                        elif command == 'T1':
+                            val_input = input("Enter measurement values (e.g. 5.05,5.01): ")
+                            if val_input.strip():
+                                latest_vals = val_input.strip()
+                            
+                            # ตอบรับ T1 กลับไปว่าสำเร็จ
+                            conn.sendall(b"T1\r")
+                            print(f"[Mock TM-X] T1 acknowledged. Saved values: {latest_vals}")
+                            
+                        # 2. เมื่อ Pi สั่ง GM (Get Measurement) -> ดึงค่าที่เราเพิ่งพิมพ์ ส่งกลับไปให้ Pi
+                        elif command.startswith("GM"):
+                            try:
+                                parts = latest_vals.split(',')
+                                v1 = parts[0].strip()
+                                v2 = parts[1].strip() if len(parts) > 1 else "5.01"
+                            except:
+                                v1, v2 = "5.05", "5.01"
+                                
+                            # จัดรูปแบบตามที่ฟังก์ชัน parse_gm ของ Pi ต้องการ (GM,จำนวน, X,สถานะ,ตัดสิน, Y,สถานะ,ตัดสิน)
+                            response = f"GM,2,{v1},1,0,{v2},1,0\r"
+                            conn.sendall(response.encode('ascii'))
+                            print(f"[Mock TM-X] Sent GM data to Pi: {response.strip()}")
+                            
+                        else:
+                            conn.sendall(b"0\r")
+                            
+                except Exception as e:
+                    print(f"[Mock TM-X] Connection closed/error: {e}")
 
 if __name__ == "__main__":
     start_mock_tmx()
