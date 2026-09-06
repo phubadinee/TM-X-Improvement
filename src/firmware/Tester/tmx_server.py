@@ -24,7 +24,8 @@ def start_mock_tmx():
                     if command == 'T1': #[cite: 4]
                         # สามารถเปลี่ยนเลขตรงนี้เพื่อทดสอบ Condition ต่างๆ ฝั่ง Pi 
                         # เช่น เปลี่ยนเป็น "5.02,5.01\r" เพื่อจำลองค่า OK
-                        response = "5.05,5.01\r" 
+                        response_ = input("enter value of measurement : ")
+                        response = response_ + "\r" 
                         conn.sendall(response.encode('ascii'))
                         print(f"[Mock TM-X] Sent data: {response.strip()}")
 
