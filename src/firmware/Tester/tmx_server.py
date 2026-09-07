@@ -46,15 +46,16 @@ def start_mock_tmx():
                             # else:
                             #     conn.sendall(b"T1,03")
 
-                            if i==1:
-                                conn.sendall(b"T1\r") 
-                            elif i==2:
-                                conn.sendall(b"T1,03") 
-                                i-=1
-                            elif i==3:
-                                conn.sendall(b"T1\r")
+                            # if i==1:
+                            #     conn.sendall(b"T1\r")
+                            #     i+=1 
+                            # elif i==2:
+                            #     conn.sendall(b"T1,03") 
+                            # elif i==3:
+                            #     conn.sendall(b"T1\r")
+                            #     i+=1
                             
-                            i+=1
+                            conn.sendall(b"T1\r")
                             print(f"[Mock TM-X] T1 acknowledged. Saved values: {latest_vals}")
                             
                         # 2. เมื่อ Pi สั่ง GM (Get Measurement) -> ดึงค่าที่เราเพิ่งพิมพ์ ส่งกลับไปให้ Pi
@@ -69,8 +70,11 @@ def start_mock_tmx():
                                 
                             # จัดรูปแบบตามที่ฟังก์ชัน parse_gm ของ Pi ต้องการ (GM,จำนวน, X,สถานะ,ตัดสิน, Y,สถานะ,ตัดสิน)
                             response = f"GM,2,{v1},1,0,{v2},1,0\r"
+                            # for i in range(9):
+                            #     print("time :",i+1)
+                            #     time.sleep(1)
                             conn.sendall(response.encode('ascii'))
-                            print(f"[Mock TM-X] Sent GM data to Pi: {response.strip()}")
+                            # print(f"[Mock TM-X] Sent GM data to Pi: {response.strip()}")
                             
                         else:
                             conn.sendall(b"0\r")
