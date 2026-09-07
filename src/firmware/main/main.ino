@@ -87,24 +87,33 @@ void setup() {
 }
 
 void loop() {
-  handleRotaryMenu();
+//  handleRotaryMenu();
+//
+//  // 2. ตรวจจับการกดปุ่ม (SW) แบบหน่วงเวลาป้องกันการกดเบิ้ล
+//  if (digitalRead(SW_PIN) == LOW) {
+//    delay(50);  // รอสัญญาณนิ่ง
+//    if (digitalRead(SW_PIN) == LOW) {
+//      executeMenuAction();
+//      while (digitalRead(SW_PIN) == LOW)
+//        ;  // รอจนกว่าจะปล่อยปุ่ม
+//      delay(50);
+//    }
+//  }
+//
+//  // 3. อัปเดตหน้าจอเฉพาะเมื่อตำแหน่งเคอร์เซอร์หรือเมนูเปลี่ยนเท่านั้น (ลดภาระ I2C)
+//  if (cursorIndex != lastCursorIndex || currentMenu != lastMenu) {
+//    updateDisplay();
+//    lastCursorIndex = cursorIndex;
+//    lastMenu = currentMenu;
+//  }
 
-  // 2. ตรวจจับการกดปุ่ม (SW) แบบหน่วงเวลาป้องกันการกดเบิ้ล
-  if (digitalRead(SW_PIN) == LOW) {
-    delay(50);  // รอสัญญาณนิ่ง
-    if (digitalRead(SW_PIN) == LOW) {
-      executeMenuAction();
-      while (digitalRead(SW_PIN) == LOW)
-        ;  // รอจนกว่าจะปล่อยปุ่ม
-      delay(50);
-    }
+  int detect_val = read_st188(); 
+  while (detect_val >= 80){
+    showActionMessage("No Part...");
+    detect_val = read_st188();
+//    Serial.println(detect_val);
   }
-
-  // 3. อัปเดตหน้าจอเฉพาะเมื่อตำแหน่งเคอร์เซอร์หรือเมนูเปลี่ยนเท่านั้น (ลดภาระ I2C)
-  if (cursorIndex != lastCursorIndex || currentMenu != lastMenu) {
-    updateDisplay();
-    lastCursorIndex = cursorIndex;
-    lastMenu = currentMenu;
-  }
+  beep();
+  runTrigWaitTMX(); 
 
 }

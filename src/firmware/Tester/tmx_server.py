@@ -4,6 +4,8 @@ import time
 HOST = '0.0.0.0'
 PORT = 8600
 
+
+
 def start_mock_tmx():
     print(f"[Mock TM-X] Starting server on Port {PORT}...")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -11,7 +13,7 @@ def start_mock_tmx():
         s.bind((HOST, PORT))
         s.listen()
         print("[Mock TM-X] Waiting for connection from Pi...")
-        
+        i = 1
         while True:
             conn, addr = s.accept()
             with conn:
@@ -34,21 +36,32 @@ def start_mock_tmx():
                         # 1. เมื่อ Pi สั่ง T1 (Trigger) -> ให้เราพิมพ์ค่าที่ต้องการตรงนี้
                         elif command == 'T1':
                             # val_input = input("Enter measurement values (e.g. 5.05,5.01): ")
-                            val_input = "5.0,5.0"
-                            print(f"Value -------------------> {val_input}")                            
-                            if val_input.strip():
-                                latest_vals = val_input.strip()
-                            
-                            print("time.sleep(11)")
-                            time.sleep(11) ################################################################
+                
+                            # time.sleep();
                             # ตอบรับ T1 กลับไปว่าสำเร็จ
-                            conn.sendall(b"T1\r")
+
+                            
+                            # if (input("Test [T1 , 03] : ") == "T1"):
+                            #     conn.sendall(b"T1\r")
+                            # else:
+                            #     conn.sendall(b"T1,03")
+
+                            if i==1:
+                                conn.sendall(b"T1\r") 
+                            elif i==2:
+                                conn.sendall(b"T1,03") 
+                                i-=1
+                            elif i==3:
+                                conn.sendall(b"T1\r")
+                            
+                            i+=1
                             print(f"[Mock TM-X] T1 acknowledged. Saved values: {latest_vals}")
                             
                         # 2. เมื่อ Pi สั่ง GM (Get Measurement) -> ดึงค่าที่เราเพิ่งพิมพ์ ส่งกลับไปให้ Pi
                         elif command.startswith("GM"):
                             try:
-                                parts = latest_vals.split(',')
+                                val_input = "6.0,5.0"
+                                parts = val_input.split(',')
                                 v1 = parts[0].strip()
                                 v2 = parts[1].strip() if len(parts) > 1 else "5.01"
                             except:

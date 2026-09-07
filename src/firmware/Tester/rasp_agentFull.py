@@ -106,7 +106,7 @@ NO_VALUE_ABS     = 9999.0        # |ค่า| >= นี้ = TM-X ยังว�
 T1_RETRY = int(os.getenv("T1_RETRY", TRIGGER_TIMEOUT))
 T1_RETRY_WAIT = float(os.getenv("T1_RETRY_WAIT", 0.3))
 
-MAX_ASK_USER_ROUNDS = int(os.getenv("MAX_ASK_USER_ROUNDS", 3))
+MAX_ASK_USER_ROUNDS = int(os.getenv("MAX_ASK_USER_ROUNDS", 4))
 
 _answer_event  = threading.Event()
 _answer_action = None                  # "retry" | "stop" | None
