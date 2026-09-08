@@ -1,18 +1,14 @@
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <DIYables_OLED_SSD1309.h>
+#include <U8g2lib.h>
 #include <Servo.h>
 
-// --- ตั้งค่าจอ OLED 1309 ---
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-#define OLED_RESET -1
-#define SCREEN_ADDRESS 0x3C  // ต่อ SDA ขา 20 และ SCL ขา 21 ของ Mega 2560
-DIYables_OLED_SSD1309 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+// --- ตั้งค่าจอ OLED 1309 ด้วย U8g2 (ใช้ Hardware I2C, Full Buffer) ---
+// ต่อ SDA ขา 20 และ SCL ขา 21 ของ Mega 2560
+U8G2_SSD1309_128X64_NONAME2_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
 // --- ตั้งค่าขา Rotary Encoder ---
-#define CLK_PIN 2
-#define DT_PIN 3
+#define CLK_PIN 2  // TRA
+#define DT_PIN 3   // TRB
 #define SW_PIN 4
 
 // --- ตัวแปรควบคุมเมนู ---
@@ -30,18 +26,19 @@ unsigned long lastRotaryTime = 0;       // เพิ่มตัวแปรเ�
 const unsigned long debounceDelay = 5;  // หน่วงเวลา 5 มิลลิวินาทีป้องกันสัญญาณสั่น
 
 // --- โครงสร้างเมนู ---
-const char* mainMenu[] = { "1. Operation", "2. PM", "3. Calibration" };
+// --- โครงสร้างเมนู ---
+// ลำดับที่ 0 และ 1 จะเป็นคำสั่งทำงานทันที ส่วนลำดับที่ 2, 3, 4 จะเข้า Sub-menu
+const char* mainMenu[] = { "1. Start", "2. System Homing", "3. Calibration", "4. PM", "5. Module Function" };
 const int mainMenuSize = sizeof(mainMenu) / sizeof(mainMenu[0]);
-
-const char* opMenu[] = { "< Back", "System Homing", "Start", "Detect Part", "Align Part", "Trig & Wait TM-X", "Transition Push", "Sort Execute", "Emergency Halt" };
-const int opMenuSize = sizeof(opMenu) / sizeof(opMenu[0]);
-
-const char* pmMenu[] = { "< Back", "Manual Jogging", "IO Testing", "Dry Run", "Pi Monitor" };
-const int pmMenuSize = sizeof(pmMenu) / sizeof(pmMenu[0]);
 
 const char* calMenu[] = { "< Back", "Actuator Stroke", "Sorter Offset", "Servo Transition" };
 const int calMenuSize = sizeof(calMenu) / sizeof(calMenu[0]);
 
+const char* pmMenu[] = { "< Back", "Manual Jogging", "IO Testing", "Comm Testing", "Dry Run" };
+const int pmMenuSize = sizeof(pmMenu) / sizeof(pmMenu[0]);
+
+const char* modMenu[] = { "< Back", "Detect Part", "Align Part", "Trig & Wait TM-X", "Transition Push", "Sort Execute" };
+const int modMenuSize = sizeof(modMenu) / sizeof(modMenu[0]);
 
 // Sensor
 const int buzzerPin = 53;
@@ -74,46 +71,41 @@ void setup() {
   // อ่านค่าสถานะเริ่มต้นของ CLK
   lastStateCLK = digitalRead(CLK_PIN);
 
-  // เริ่มต้นจอ OLED
-  if (!display.begin(SSD1309_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1309 allocation failed"));
-    for (;;)
-      ;
-  }
+  // เริ่มต้นจอ OLED ด้วย U8g2
+  u8g2.begin();
 
-  // myServo.write(90);
   updateDisplay();
   for_beep();
 }
 
 void loop() {
-//  handleRotaryMenu();
-//
-//  // 2. ตรวจจับการกดปุ่ม (SW) แบบหน่วงเวลาป้องกันการกดเบิ้ล
-//  if (digitalRead(SW_PIN) == LOW) {
-//    delay(50);  // รอสัญญาณนิ่ง
-//    if (digitalRead(SW_PIN) == LOW) {
-//      executeMenuAction();
-//      while (digitalRead(SW_PIN) == LOW)
-//        ;  // รอจนกว่าจะปล่อยปุ่ม
-//      delay(50);
-//    }
-//  }
-//
-//  // 3. อัปเดตหน้าจอเฉพาะเมื่อตำแหน่งเคอร์เซอร์หรือเมนูเปลี่ยนเท่านั้น (ลดภาระ I2C)
-//  if (cursorIndex != lastCursorIndex || currentMenu != lastMenu) {
-//    updateDisplay();
-//    lastCursorIndex = cursorIndex;
-//    lastMenu = currentMenu;
-//  }
+  handleRotaryMenu();
 
-  int detect_val = read_st188(); 
-  while (detect_val >= 80){
-    showActionMessage("No Part...");
-    detect_val = read_st188();
-//    Serial.println(detect_val);
+  // 2. ตรวจจับการกดปุ่ม (SW) แบบหน่วงเวลาป้องกันการกดเบิ้ล
+  if (digitalRead(SW_PIN) == LOW) {
+    delay(50);  // รอสัญญาณนิ่ง
+    if (digitalRead(SW_PIN) == LOW) {
+      executeMenuAction();
+      while (digitalRead(SW_PIN) == LOW)
+        ;  // รอจนกว่าจะปล่อยปุ่ม
+      delay(50);
+    }
   }
-  beep();
-  runTrigWaitTMX(); 
 
+  // 3. อัปเดตหน้าจอเฉพาะเมื่อตำแหน่งเคอร์เซอร์หรือเมนูเปลี่ยนเท่านั้น
+  if (cursorIndex != lastCursorIndex || currentMenu != lastMenu) {
+    updateDisplay();
+    lastCursorIndex = cursorIndex;
+    lastMenu = currentMenu;
+  }
+
+
+  //   int detect_val = read_st188();
+  //   while (detect_val >= 80){
+  //     showActionMessage("No Part...");
+  //     detect_val = read_st188();
+  // //    Serial.println(detect_val);
+  //   }
+  //   beep();
+  //   runTrigWaitTMX();
 }

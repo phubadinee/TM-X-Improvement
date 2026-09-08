@@ -173,7 +173,6 @@ _mock_db = {
 #   "วัดได้แต่ค่าไม่ถึง DB" ที่เด้งถาม retry / accept / stop
 MOCK_MEASURE_DELAY = float(os.getenv("MOCK_MEASURE_DELAY", 1.0))
 
-
 def _mock_schedule_measurement():
     """ตั้งเวลาเพิ่ม measured_count — เลียนแบบ Data-receiver ที่รับไฟล์ FTP แล้ว POST"""
     def _bump():
@@ -190,7 +189,6 @@ def _mock_schedule_measurement():
                 _mock_db["reason"] = "วัดครบตามจำนวนแล้ว"
         log.info("   📥 [MOCK] ค่าเข้า DB แล้ว (%s/%s)", n, t)
     threading.Thread(target=_bump, daemon=True).start()
-
 
 http_app = FastAPI()
 

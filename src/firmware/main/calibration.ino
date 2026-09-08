@@ -1,14 +1,14 @@
-void runActuatorStroke() {
+void setActuatorStroke() {
   showActionMessage("Actuator Stroke...");
   delay(1500);
 }
 
-void runSorterOffset() {
+void setSorterOffset() {
   showActionMessage("Sorter Offset...");
   delay(1500);
 }
 
-void runServoTransition() {
+void setServoTransition() {
   showActionMessage("Servo Transition...");
   delay(1500);
 }

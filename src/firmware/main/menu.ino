@@ -1,48 +1,41 @@
 void handleRotaryMenu() {
   currentStateCLK = digitalRead(CLK_PIN);
 
-  // ตรวจจับเฉพาะการเปลี่ยนจาก LOW ไป HIGH (Rising Edge)
   if (currentStateCLK != lastStateCLK && currentStateCLK == HIGH) {
-
-    // เช็คระยะเวลาว่าห่างจากการหมุนครั้งล่าสุดเกินค่า Debounce หรือไม่
     if ((millis() - lastRotaryTime) > debounceDelay) {
-
-      // ถ้า DT ไม่เหมือนกับ CLK ตอนเปลี่ยน แสดงว่าหมุนขวา (ลงล่าง)
       if (digitalRead(DT_PIN) != currentStateCLK) {
         cursorIndex++;
       } else {
-        cursorIndex--;  // หมุนซ้าย (ขึ้นบน)
+        cursorIndex--;
       }
 
       // กำหนดขอบเขตสูงสุดต่ำสุดตามเมนูปัจจุบัน
       int maxItems = 0;
       if (currentMenu == 0) maxItems = mainMenuSize;
-      else if (currentMenu == 1) maxItems = opMenuSize;
-      else if (currentMenu == 2) maxItems = pmMenuSize;
-      else if (currentMenu == 3) maxItems = calMenuSize;
+      else if (currentMenu == 3) maxItems = calMenuSize;  // Calibration
+      else if (currentMenu == 4) maxItems = pmMenuSize;   // PM
+      else if (currentMenu == 5) maxItems = modMenuSize;  // Module Function
 
-      // จำกัดไม่ให้เคอร์เซอร์เลยขอบเมนู
       if (cursorIndex >= maxItems) cursorIndex = maxItems - 1;
       if (cursorIndex < 0) cursorIndex = 0;
 
-      // บันทึกเวลาที่หมุนสำเร็จ
       lastRotaryTime = millis();
     }
   }
-
   lastStateCLK = currentStateCLK;
 }
 
 void drawMenu(const char* title, const char* items[], int itemCount) {
-  display.clearDisplay();
-  display.setTextSize(1);
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
 
-  display.setTextColor(SSD1309_PIXEL_ON);
-  display.setCursor(0, 0);
-  display.print("--- ");
-  display.print(title);
-  display.println(" ---");
-  display.drawLine(0, 10, 128, 10, SSD1309_PIXEL_ON);
+  u8g2.setDrawColor(1);
+  u8g2.setCursor(0, 9);
+  u8g2.print("--- ");
+  u8g2.print(title);
+  u8g2.print(" ---");
+  
+  u8g2.drawLine(0, 12, 128, 12);
 
   if (cursorIndex >= scrollOffset + maxVisibleItems) {
     scrollOffset = cursorIndex - maxVisibleItems + 1;
@@ -54,82 +47,86 @@ void drawMenu(const char* title, const char* items[], int itemCount) {
     int itemIndex = scrollOffset + i;
     if (itemIndex >= itemCount) break;
 
-    int yPos = 16 + (i * 12);
+    int yPos = 25 + (i * 12);
 
     if (itemIndex == cursorIndex) {
-      display.fillRect(0, yPos - 2, 128, 11, SSD1309_PIXEL_ON);
-      display.setTextColor(0);  // ตัวอักษรสีดำบนแถบทึบ
+      u8g2.setDrawColor(1);
+      u8g2.drawBox(0, yPos - 9, 128, 11);
+      u8g2.setDrawColor(0); 
     } else {
-      display.setTextColor(SSD1309_PIXEL_ON);
+      u8g2.setDrawColor(1); 
     }
 
-    display.setCursor(4, yPos);
-    display.print(items[itemIndex]);
+    u8g2.setCursor(4, yPos);
+    u8g2.print(items[itemIndex]);
   }
 
-  display.display();
+  u8g2.sendBuffer();
 }
 
 void updateDisplay() {
   if (currentMenu == 0) drawMenu("MAIN MENU", mainMenu, mainMenuSize);
-  else if (currentMenu == 1) drawMenu("OPERATION", opMenu, opMenuSize);
-  else if (currentMenu == 2) drawMenu("PM MODE", pmMenu, pmMenuSize);
   else if (currentMenu == 3) drawMenu("CALIBRATION", calMenu, calMenuSize);
+  else if (currentMenu == 4) drawMenu("PM MODE", pmMenu, pmMenuSize);
+  else if (currentMenu == 5) drawMenu("MODULE FUNCT.", modMenu, modMenuSize);
 }
 
 void executeMenuAction() {
   if (currentMenu == 0) {
-    // อยู่ที่ MAIN MENU: กดเพื่อเข้า Sub-Menu ต่างๆ
-    currentMenu = cursorIndex + 1;
-    cursorIndex = 0;
-    scrollOffset = 0;
+    // ตรวจสอบว่ากดเมนูสั่งงานตรงๆ หรือเข้า Sub-Menu
+    if (cursorIndex == 0) {
+      runStart();
+    } else if (cursorIndex == 1) {
+      runSystemHoming();
+    } else {
+      // เข้า Sub-Menu (เช่น Index 2 ไป CurrentMenu 3)
+      currentMenu = cursorIndex + 1;
+      cursorIndex = 0;
+      scrollOffset = 0;
+    }
   } else {
     // อยู่ใน Sub-Menu
     if (cursorIndex == 0) {
-      // ตำแหน่งที่ 0 คือคำสั่ง "< Back" ให้กลับไป Main Menu
+      // "< Back" ให้กลับไป Main Menu
       currentMenu = 0;
       cursorIndex = 0;
       scrollOffset = 0;
     } else {
-      // สั่งงานฟังก์ชันตาม CurrentMenu และ CursorIndex
       switch (currentMenu) {
-
-        // ------------------------------------
-        // 1. OPERATION MENU
-        // ------------------------------------
-        case 1:
-          switch (cursorIndex) {
-            case 1: runSystemHoming(); break;    // "System Homing"             on going
-            case 2: runStart(); break;           // "Start"                     Done
-            case 3: runDetectPart(); break;      // "Detect Part"               Done
-            case 4: runAlignPart(); break;       // "Align Part"                wait order part 
-            case 5: runTrigWaitTMX(); break;     // "Trig & Wait TM-X"          Done
-            case 6: runTransitionPush(); break;  // "Transition Push"           Done
-            case 7: runSortExecute(); break;     // "Sort Execute"              on going 
-            case 8: runEmergencyHalt(); break;   // "Emergency Halt" on going 
-          }
-          break;
-
-        // ------------------------------------
-        // 2. PM MENU
-        // ------------------------------------
-        case 2:
-          switch (cursorIndex) {
-            case 1: runManualJogging(); break;  // "Manual Jogging"
-            case 2: runIOTesting(); break;      // "IO Testing"
-            case 3: runDryRun(); break;         // "Dry Run"
-            case 4: runPiMonitor(); break;      // "Pi Monitor"
-          }
-          break;
 
         // ------------------------------------
         // 3. CALIBRATION MENU
         // ------------------------------------
         case 3:
           switch (cursorIndex) {
-            case 1: runActuatorStroke(); break;   // "Actuator Stroke"
-            case 2: runSorterOffset(); break;     // "Sorter Offset"
-            case 3: runServoTransition(); break;  // "Servo Transition"
+            case 1: setActuatorStroke(); break;
+            case 2: setSorterOffset(); break;
+            case 3: setServoTransition(); break;
+          }
+          break;
+
+        // ------------------------------------
+        // 4. PM MENU
+        // ------------------------------------
+        case 4:
+          switch (cursorIndex) {
+            case 1: runManualJogging(); break;
+            case 2: runIOTesting(); break;
+            case 3: runCommunicationTesting(); break;
+            case 4: runDryRun(); break;
+          }
+          break;
+
+        // ------------------------------------
+        // 5. MODULE FUNCTION MENU
+        // ------------------------------------
+        case 5:
+          switch (cursorIndex) {
+            case 1: runDetectPart(); break;
+            case 2: runAlignPart(); break;
+            case 3: runTrigWaitTMX(); break;
+            case 4: runTransitionPush(); break;
+            case 5: runSortExecute(); break;
           }
           break;
       }
@@ -138,19 +135,16 @@ void executeMenuAction() {
   updateDisplay();
 }
 
-
 void showActionMessage(const char* actionName) {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1309_PIXEL_ON);
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setDrawColor(1);
 
-  // จัดข้อความให้อยู่กึ่งกลางคร่าวๆ
-  display.setCursor(10, 15);
-  display.println("--- EXECUTING ---");
+  u8g2.setCursor(10, 25);
+  u8g2.print("--- EXECUTING ---");
 
-  display.setCursor(10, 35);
-  display.print(actionName);
+  u8g2.setCursor(10, 45);
+  u8g2.print(actionName);
 
-  display.display();
+  u8g2.sendBuffer();
 }
-

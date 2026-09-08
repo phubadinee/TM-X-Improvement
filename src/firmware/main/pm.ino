@@ -4,18 +4,34 @@ void runManualJogging() {
 }
 
 void runIOTesting() {
-  showActionMessage("I/O Testing...");
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setDrawColor(1);
+  u8g2.setCursor(10, 15);
+  u8g2.print("--- IO Testing ---");
+  u8g2.sendBuffer();
+
   while (1) {
     int st188_val = analogRead(st188Pin);
-    // Serial.print("ST188 Value : ");
-    // Serial.println(st188_val);
     int st188_val_map = map(st188_val, 0, 1023, 0, 100);
-    Serial.print("ST188 Value Map : ");
-    Serial.println(st188_val_map);
 
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.setDrawColor(1);
+    
+    // วาดหัวข้อค้างไว้
+    u8g2.setCursor(10, 15);
+    u8g2.print("--- IO Testing ---");
+
+    // แสดงค่าเซนเซอร์
+    u8g2.setCursor(10, 35);
+    u8g2.print("Val: ");
+    u8g2.print(st188_val);
+    u8g2.print("    "); // เคาะเว้นวรรคเพื่อเคลียร์ตัวเลขเก่าที่อาจยาวกว่า
+    
+    u8g2.sendBuffer();  
+    delay(100); // หน่วงเวลาเล็กน้อยเพื่อไม่ให้อัปเดตหน้าจอเร็วเกินไปจนกระพริบ
   }
-
-  delay(1500);
 }
 
 void runDryRun() {
@@ -24,28 +40,30 @@ void runDryRun() {
 }
 
 void showPiMessage(const char* msg) {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1309_PIXEL_ON);
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setDrawColor(1);
 
-  display.setCursor(10, 15);
-  display.println("--- MSG FROM PI ---");
+  u8g2.setCursor(10, 15);
+  u8g2.print("--- MSG FROM PI ---");
 
-  display.setCursor(10, 35);
-  display.print(msg);
+  u8g2.setCursor(10, 35);
+  u8g2.print(msg);
 
-  display.display();
+  u8g2.sendBuffer();
 }
 
 void runPiMonitor() {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(SSD1309_PIXEL_ON);
-  display.setCursor(10, 15);
-  display.println("--- PI MONITOR ---");
-  display.setCursor(10, 35);
-  display.print("Waiting for data...");
-  display.display();
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setDrawColor(1);
+  
+  u8g2.setCursor(10, 15);
+  u8g2.print("--- PI MONITOR ---");
+  
+  u8g2.setCursor(10, 35);
+  u8g2.print("Waiting for data...");
+  u8g2.sendBuffer();
 
   // Wait until SW is released if it was just pressed
   while (digitalRead(SW_PIN) == LOW) {
@@ -79,14 +97,17 @@ void runPiMonitor() {
         Serial.println("]");
 
         // Update display
-        display.clearDisplay();
-        display.setTextSize(1);
-        display.setTextColor(SSD1309_PIXEL_ON);
-        display.setCursor(10, 15);
-        display.println("--- PI MONITOR ---");
-        display.setCursor(10, 35);
-        display.print(dataFromPi.c_str());
-        display.display();
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_6x10_tf);
+        u8g2.setDrawColor(1);
+        
+        u8g2.setCursor(10, 15);
+        u8g2.print("--- PI MONITOR ---");
+        
+        u8g2.setCursor(10, 35);
+        u8g2.print(dataFromPi.c_str());
+        
+        u8g2.sendBuffer();
       }
     }
   }
