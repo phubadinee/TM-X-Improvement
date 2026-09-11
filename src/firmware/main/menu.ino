@@ -25,7 +25,56 @@ void handleRotaryMenu() {
   lastStateCLK = currentStateCLK;
 }
 
+// ==========================================
+// ฟังก์ชันวาดเมนูด้วย U8g2 (Highlight & Scrollbar)
+// ==========================================
 void drawMenu(const char* title, const char* items[], int itemCount) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+
+  // 1. วาดหัวข้อเมนู
+  u8g2.setDrawColor(1);
+  u8g2.setCursor(2, 9);
+  u8g2.print(title);
+  
+  // เส้นคั่นหัวข้อแบบเต็มจอ
+  u8g2.drawLine(0, 12, 128, 12);
+
+  // คำนวณการเลื่อนหน้าจอแบบซ่อน Scrollbar
+  if (cursorIndex >= scrollOffset + maxVisibleItems) {
+    scrollOffset = cursorIndex - maxVisibleItems + 1;
+  } else if (cursorIndex < scrollOffset) {
+    scrollOffset = cursorIndex;
+  }
+
+  // 2. วาดรายการเมนู
+  for (int i = 0; i < maxVisibleItems; i++) {
+    int itemIndex = scrollOffset + i;
+    if (itemIndex >= itemCount) break;
+
+    int yPos = 24 + (i * 12);
+
+    if (itemIndex == cursorIndex) {
+      // แถบ Highlight สีขาว วาดเต็มความกว้างจอ (128 px)
+      u8g2.setDrawColor(1);
+      u8g2.drawBox(0, yPos - 9, 128, 11);
+      
+      // ตัวหนังสือสีดำบนแถบขาว
+      u8g2.setDrawColor(0); 
+    } else {
+      // ตัวหนังสือปกติสีขาว
+      u8g2.setDrawColor(1); 
+    }
+
+    u8g2.setCursor(4, yPos);
+    u8g2.print(items[itemIndex]);
+  }
+
+  u8g2.sendBuffer();
+}
+
+
+void drawMenu2(const char* title, const char* items[], int itemCount) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tf);
 
@@ -135,7 +184,31 @@ void executeMenuAction() {
   updateDisplay();
 }
 
+
 void showActionMessage(const char* actionName) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  
+  // วาดกรอบสี่เหลี่ยมเต็มขอบหน้าจอ (128x64)
+  u8g2.setDrawColor(1);
+  u8g2.drawFrame(0, 0, 128, 64);
+  
+  // วาดแถบทึบด้านบนเป็น Header แบบเต็มจอ
+  u8g2.drawBox(0, 0, 128, 18); 
+
+  // ข้อความ Header สีดำทับพื้นขาว (Invert)
+  u8g2.setDrawColor(0);
+  u8g2.setCursor(13, 13);
+  u8g2.print(">>> EXECUTING <<<");
+
+  // ชื่อฟังก์ชันที่กำลังรัน (ตัวหนังสือสีขาวปกติ ตรงกลางจอ)
+  u8g2.setDrawColor(1);
+  u8g2.setCursor(10, 40); // ปรับตำแหน่งแกน X, Y ให้พอดี
+  u8g2.print(actionName);
+  u8g2.sendBuffer();
+}
+
+void showActionMessage2(const char* actionName) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tf);
   u8g2.setDrawColor(1);

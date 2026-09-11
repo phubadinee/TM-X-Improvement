@@ -10,6 +10,7 @@ U8G2_SSD1309_128X64_NONAME2_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 #define CLK_PIN 2  // TRA
 #define DT_PIN 3   // TRB
 #define SW_PIN 4
+#define STOP_BTN_PIN 5 // ปุ่มใหม่สำหรับ Stop / Back (ต่อเข้า Digital 6 กับ GND)
 
 // --- ตัวแปรควบคุมเมนู ---
 int currentMenu = 0;
@@ -65,7 +66,8 @@ void setup() {
   pinMode(buzzerPin, OUTPUT);
   pinMode(limit_servo, INPUT);
   pinMode(st188Pin, INPUT_PULLUP);
-
+  pinMode(STOP_BTN_PIN, INPUT_PULLUP); // ตั้งค่าปุ่ม Stop/Back เพิ่มเติม
+  
   myServo.attach(servoPin);
 
   // อ่านค่าสถานะเริ่มต้นของ CLK
@@ -88,6 +90,21 @@ void loop() {
       executeMenuAction();
       while (digitalRead(SW_PIN) == LOW)
         ;  // รอจนกว่าจะปล่อยปุ่ม
+      delay(50);
+    }
+  }
+
+  // 2. ตรวจจับการกดปุ่ม STOP/BACK เพิ่มเติม (เมื่ออยู่ใน Sub-menu แล้วกดปุ่มนี้ จะเด้งกลับหน้าหลักทันที)
+  if (digitalRead(STOP_BTN_PIN) == LOW) {
+    delay(50);
+    if (digitalRead(STOP_BTN_PIN) == LOW) {
+      if (currentMenu > 0) {
+        currentMenu = 0;
+        cursorIndex = 0;
+        scrollOffset = 0;
+        updateDisplay();
+      }
+      while (digitalRead(STOP_BTN_PIN) == LOW);
       delay(50);
     }
   }

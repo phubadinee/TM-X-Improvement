@@ -1,32 +1,84 @@
 #include <AccelStepper.h>
 
-// กำหนดค่าโหมด Half-step (8 พินซีเควนซ์) สำหรับ 28BYJ-48
-#define HALFSTEP 8
+const int stepPin = 35; 
+const int dirPin = 34;
+const int limitSwitchPin = 31; 
+const int enPin = 42; // เพิ่มขา Enable สำหรับ DRV8825
 
-// กำหนดขาที่ต่อกับบอร์ด ULN2003 (เรียงตามลำดับ 1, 3, 2, 4 เพื่อความถูกต้องของขดลวด)
-#define motorPin1  10  // IN1
-#define motorPin2  11  // IN2
-#define motorPin3  12 // IN3
-#define motorPin4  13  // IN4
+AccelStepper stepper(1, stepPin, dirPin);
 
-// สร้างออบเจ็กต์ AccelStepper ในโหมด Half-step
-AccelStepper stepper(HALFSTEP, motorPin1, motorPin3, motorPin2, motorPin4);
+int dis = 800;
+long positions[4] = {0, 885, 1650, 2400};
+int currentPosIndex = 0;
+int state = 0; 
 
 void setup() {
   Serial.begin(115200);
-
-  // ตั้งค่าความเร็วสูงสุดและความเร่งเพื่อให้มอเตอร์ไต่รอบไปถึงจุดสูงสุดได้ไวที่สุด
-  // หมายเหตุ: สำหรับ 28BYJ-48 ความเร็วสูงสุดที่ใช้งานได้จริงมักจะอยู่ราวๆ 1000-1200 Steps/sec 
-  stepper.setMaxSpeed(1000.0);    
-  stepper.setAcceleration(800.0); 
   
-  // สั่งให้หมุนไปข้างหน้าแบบต่อเนื่องยาวๆ
-  stepper.moveTo(2048000); 
+  pinMode(limitSwitchPin, INPUT_PULLUP);
+  
+  // ตั้งค่าและเปิดใช้งาน DRV8825
+  pinMode(enPin, OUTPUT);
+  digitalWrite(enPin, LOW); // LOW = เปิดให้ไดร์เวอร์ทำงาน
 
-  Serial.println("=== เริ่มต้นควบคุม 28BYJ-48 ด้วยโหมด Half-step สปีดสูงสุด ===");
+  stepper.setMaxSpeed(800);      // ยิ่งค่านี้น้อย แรงบิดจะยิ่งเยอะ
+  stepper.setAcceleration(400); 
+  
+  Serial.println("Start Homing...");
 }
 
 void loop() {
-  // ฟังก์ชันนี้ต้องถูกเรียกใช้งานตลอดเวลาเพื่อประมวลผลพัลส์การหมุนของมอเตอร์
-  stepper.run();
+  switch (state) {
+    
+    case 0:
+    case 2:
+      if (digitalRead(limitSwitchPin) == LOW) {
+        stepper.stop();                
+        
+        // --- เพิ่มโค้ด 3 บรรทัดนี้เพื่อถอยออกจากสวิตช์ ---
+        stepper.setCurrentPosition(0); // 1. เซ็ตตำแหน่งที่ชนเป็น 0 ชั่วคราว
+        stepper.runToNewPosition(50);  // 2. สั่งหมุนไปทางขวา 50 สเต็ป (ปรับเพิ่ม/ลดตัวเลข 50 ได้ตามระยะที่ต้องการ)
+        stepper.setCurrentPosition(0); // 3. เซ็ตตำแหน่งที่ถอยออกมาเป็นตำแหน่ง Home (0) ของจริง
+        // -------------------------------------------
+        
+        Serial.println("Limit Switch Pressed! Reached Home.");
+        
+        // ตัดไฟมอเตอร์ตอนหยุดพัก
+        digitalWrite(enPin, HIGH); // HIGH = ตัดไฟเข้ามอเตอร์
+        delay(1000); 
+        digitalWrite(enPin, LOW);  // กลับมาจ่ายไฟเตรียมตัววิ่งต่อ
+        
+        state = 1;
+        currentPosIndex = 0;
+        stepper.moveTo(positions[currentPosIndex]); 
+        
+      } else {
+        stepper.setSpeed(-500); 
+        stepper.runSpeed();     
+      }
+      break;
+
+    case 1:
+      if (stepper.distanceToGo() == 0) {
+        Serial.print("Reached Position: ");
+        Serial.println(currentPosIndex + 1);
+        
+        // ตัดไฟมอเตอร์ตอนหยุดพักในแต่ละตำแหน่ง
+        digitalWrite(enPin, HIGH); 
+        delay(1000); 
+        digitalWrite(enPin, LOW); 
+        
+        currentPosIndex++; 
+        
+        if (currentPosIndex < 4) {
+          stepper.moveTo(positions[currentPosIndex]);
+        } else {
+          Serial.println("Completed 4 positions. Returning back...");
+          state = 2; 
+        }
+      }
+      
+      stepper.run(); 
+      break;
+  }
 }
