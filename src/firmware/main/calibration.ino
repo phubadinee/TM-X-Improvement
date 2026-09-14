@@ -3,10 +3,10 @@ void setActuatorStroke() {
   delay(1500);
 }
 
-void setSorterOffset() {
-  showActionMessage("Sorter Offset...");
-  delay(1500);
-}
+//void setSorterOffset() {
+//  showActionMessage("Sorter Offset...");
+//  adjustSorterPositions();
+//}
 
 void setServoTransition() {
   showActionMessage("Servo Transition...");

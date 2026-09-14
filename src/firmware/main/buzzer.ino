@@ -1,8 +1,8 @@
-void beep(){
+void beep(int delay_){
   digitalWrite(buzzerPin, 1);
-  delay(100);
+  delay(delay_);
   digitalWrite(buzzerPin, 0);
-  delay(100);
+  delay(delay_);
 }
 
 void long_beep(){
@@ -13,12 +13,16 @@ void long_beep(){
 }
 
 void for_beep(){
-  beep();beep();beep();
+  beep(100);beep(100);beep(100);
 }
 
 void load_beep(){
   for(int i=0;i<5;i++){
-    beep();
+    beep(100);
     delay(500);
   }
+}
+
+void for_beep_fast(){
+  beep(50);beep(50);beep(50);
 }

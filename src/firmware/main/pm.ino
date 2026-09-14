@@ -34,9 +34,17 @@ void runIOTesting() {
   }
 }
 
-void runDryRun() {
-  showActionMessage("Dry Run Mode...");
-  delay(1500);
+void runDryRun(int set) {
+  showActionMessage("Starting Machine...");
+
+  for(int i=0;i<set;i++){
+    runDetectPart_TEST();       
+    extendPart();
+    runTrigWaitTMX_TEST();   
+    retractPart();
+    runSortExecute('t');
+    runTransitionPush();  
+ }
 }
 
 void showPiMessage(const char* msg) {

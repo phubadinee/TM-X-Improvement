@@ -1,47 +1,25 @@
-// #include <EEPROM.h> 
+// ฟังก์ชันสำหรับดึงค่าตำแหน่งจาก EEPROM
+void loadPositionsFromEEPROM() {
+  // ตรวจสอบว่าเคยเซฟค่าไว้หรือไม่ (เช็คไบต์แรก)
+  if (EEPROM.read(0) == EEPROM_INIT_FLAG) {
+    EEPROM.get(1, positions[0]);
+    EEPROM.get(5, positions[1]);
+    EEPROM.get(9, positions[2]);
+    EEPROM.get(13, positions[3]);
+    Serial.println("Loaded Stepper Positions from EEPROM");
+  } else {
+    // ถ้ายังไม่เคยเซฟ (ครั้งแรก) ให้เซฟค่า Default ลงไป
+    Serial.println("No EEPROM data found, writing defaults.");
+    savePositionsToEEPROM();
+  }
+}
 
-// // Define variables to save
-// int sensorThreshold = 850;      // An int takes 2 bytes on the Mega 2560
-// float calibrationValue = 1.25;  // A float takes 4 bytes on the Mega 2560
-
-// void setup() {
-//   Serial.begin(115200);
-  
-//   int address = 0; // Start at EEPROM address 0 (range is 0 to 4095 on Mega 2560)
-
-//   // --- WRITING TO EEPROM ---
-//   // Store the integer at address 0
-//   EEPROM.put(address, sensorThreshold);
-  
-//   // Shift the address forward by the size of the integer (2 bytes)
-//   address += sizeof(sensorThreshold);
-  
-//   // Store the float at the new address (address 2)
-//   EEPROM.put(address, calibrationValue);
-
-
-//   // --- READING FROM EEPROM ---
-//   int readAddress = 0;
-//   int loadedThreshold;
-//   float loadedCalibration;
-
-//   // Read the integer from address 0
-//   EEPROM.get(readAddress, loadedThreshold);
-  
-//   // Shift the address forward to read the next variable
-//   readAddress += sizeof(loadedThreshold);
-  
-//   // Read the float from address 2
-//   EEPROM.get(readAddress, loadedCalibration);
-
-//   // Print results
-//   Serial.print("Loaded Threshold: ");
-//   Serial.println(loadedThreshold);
-  
-//   Serial.print("Loaded Calibration: ");
-//   Serial.println(loadedCalibration);
-// }
-
-// void loop() {
-//   // Main program logic
-// }
+// ฟังก์ชันสำหรับบันทึกค่าตำแหน่งลง EEPROM
+void savePositionsToEEPROM() {
+  EEPROM.update(0, EEPROM_INIT_FLAG); // บันทึก Flag
+  EEPROM.put(1, positions[0]);        // เริ่มที่ Address 1 (Long ใช้ 4 bytes)
+  EEPROM.put(5, positions[1]);        // เริ่มที่ Address 5
+  EEPROM.put(9, positions[2]);        // เริ่มที่ Address 9
+  EEPROM.put(13, positions[3]);       // เริ่มที่ Address 13
+  Serial.println("Saved Stepper Positions to EEPROM");
+}

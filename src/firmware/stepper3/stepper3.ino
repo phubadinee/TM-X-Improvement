@@ -1,9 +1,9 @@
 #include <AccelStepper.h>
 
-const int stepPin = 35; 
-const int dirPin = 34;
+const int stepPin = 13; 
+const int dirPin = 12;
 const int limitSwitchPin = 31; 
-const int enPin = 42; 
+const int enPin = 8; 
 
 AccelStepper stepper(1, stepPin, dirPin);
 
@@ -114,7 +114,7 @@ void runHoming() {
 
 // ฟังก์ชันสำหรับหน่วงเวลาและตัดไฟมอเตอร์
 void pauseMotor() {
-  delay(1000);             // รอให้มอเตอร์หยุดนิ่งสนิท 1 วินาที
-  digitalWrite(enPin, LOW); // สั่งตัดไฟ (Disable) ค้างไว้ เพื่อลดการกินกระแส
+  delay(1000);            // รอให้มอเตอร์หยุดนิ่งสนิท 1 วินาที
+  digitalWrite(enPin, HIGH); // สั่งตัดไฟ (Disable) ค้างไว้ เพื่อลดการกินกระแส
   // ไม่ต้องสั่งเปิดไฟกลับตรงนี้ เพราะตอนจะวิ่งฟังก์ชันหลักจะเปิดให้อัตโนมัติ
 }

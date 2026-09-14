@@ -1,6 +1,8 @@
-void runTrigWaitTMX() {
+char runTrigWaitTMX() {
   showActionMessage("Measuring (TM-X)...");
 
+  int result;
+  
   while (Serial.available() > 0) Serial.read();
 
   // Send to Rasp pi
@@ -14,16 +16,29 @@ void runTrigWaitTMX() {
 
       if (response == "<MEASURE_OK>") {
         for_beep();
-      } else {
+        result = '1';
+      } 
+      
+      else if (response == "<MEASURE_NG>") {
         long_beep();
+        result = '0';
       }
-
       receivedAck = true;
-
     }
   }
 
   Serial.println("Measurement finished.");
+  return result;
+}
+
+char runTrigWaitTMX_TEST() {
+  showActionMessage("Measuring (TM-X)...");
+
+  int result;
+  result = '0';
+
+  Serial.println("Measurement finished.");
+  return result;
 }
 
 void  runCommunicationTesting() {

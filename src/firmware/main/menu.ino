@@ -162,7 +162,7 @@ void executeMenuAction() {
             case 1: runManualJogging(); break;
             case 2: runIOTesting(); break;
             case 3: runCommunicationTesting(); break;
-            case 4: runDryRun(); break;
+            case 4: runDryRun(5); break;
           }
           break;
 
@@ -175,7 +175,7 @@ void executeMenuAction() {
             case 2: runAlignPart(); break;
             case 3: runTrigWaitTMX(); break;
             case 4: runTransitionPush(); break;
-            case 5: runSortExecute(); break;
+            case 5: runSortExecute('t'); break;
           }
           break;
       }
