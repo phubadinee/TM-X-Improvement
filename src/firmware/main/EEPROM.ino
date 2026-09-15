@@ -1,4 +1,3 @@
-// ฟังก์ชันสำหรับดึงค่าตำแหน่งจาก EEPROM
 void loadPositionsFromEEPROM() {
   // ตรวจสอบว่าเคยเซฟค่าไว้หรือไม่ (เช็คไบต์แรก)
   if (EEPROM.read(0) == EEPROM_INIT_FLAG) {
@@ -8,13 +7,11 @@ void loadPositionsFromEEPROM() {
     EEPROM.get(13, positions[3]);
     Serial.println("Loaded Stepper Positions from EEPROM");
   } else {
-    // ถ้ายังไม่เคยเซฟ (ครั้งแรก) ให้เซฟค่า Default ลงไป
     Serial.println("No EEPROM data found, writing defaults.");
     savePositionsToEEPROM();
   }
 }
 
-// ฟังก์ชันสำหรับบันทึกค่าตำแหน่งลง EEPROM
 void savePositionsToEEPROM() {
   EEPROM.update(0, EEPROM_INIT_FLAG); // บันทึก Flag
   EEPROM.put(1, positions[0]);        // เริ่มที่ Address 1 (Long ใช้ 4 bytes)

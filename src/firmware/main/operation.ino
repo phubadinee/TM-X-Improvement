@@ -13,6 +13,7 @@ void runStart() {
 
 void runSystemHoming() {
   showActionMessage("System Homing...");
+  runTransitionRetract();
   runTransitionPush();
   runHoming();
   for_beep();
@@ -20,6 +21,10 @@ void runSystemHoming() {
 
 
 void runEmergencyHalt() {
-  showActionMessage("! EMERGENCY HALT !");
-  delay(2000);  // ให้อ่านนานหน่อย
+  // 1. สั่งตัดไฟมอเตอร์ทันทีเพื่อความปลอดภัย
+  digitalWrite(enPin, HIGH); 
+  
+  // 2. สั่งดึงไฟขา 12 ลง GND ซึ่งจะไปดึงขา RESET ของบอร์ดให้ทำงาน
+  // บอร์ดจะดับและเปิดใหม่ทันที 100% เหมือนเอานิ้วกดปุ่มรีเซ็ต
+  digitalWrite(RESET_PIN, LOW);
 }
