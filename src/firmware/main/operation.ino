@@ -4,7 +4,8 @@ void runStart() {
   
   extendPart();
   
-  char result_ = runTrigWaitTMX_TEST();
+//  char result_ = runTrigWaitTMX_TEST();
+  char result_ = runTrigWaitTMX();
   result_ = '0';    
   retractPart();
   runSortExecute(result_);
@@ -13,8 +14,12 @@ void runStart() {
 
 void runSystemHoming() {
   showActionMessage("System Homing...");
+
+  retractPart();
+  
   runTransitionRetract();
   runTransitionPush();
+  
   runHoming();
   for_beep();
 }

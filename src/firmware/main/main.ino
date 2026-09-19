@@ -8,7 +8,7 @@
 // 1. SYSTEM CONFIGURATION
 // ==========================================
 const int EEPROM_INIT_FLAG = 0xAA;
-
+const int EEPROM_ADDR_ACTUATOR = 20;
 // ==========================================
 // 2. PIN DEFINITIONS (Hardware Mapping)
 // ==========================================
@@ -18,7 +18,7 @@ const int EEPROM_INIT_FLAG = 0xAA;
 #define SW_PIN 4            // Rotary Button (Enter)
 #define STOP_BTN_PIN 5      // Stop / Back Button
 const int intEmer = 19;     // Emergency Stop Button (Interrupt)
-const int RESET_PIN = 12;   // Hardware Reset Pin (เชื่อมไปหาขา RESET บนบอร์ด)
+//const int RESET_PIN = 12;   // Hardware Reset Pin (เชื่อมไปหาขา RESET บนบอร์ด)
 
 // -- OLED Display --
 // SDA = 20, SCL = 21 (Mega 2560 Hardware I2C - ไม่ต้องประกาศพิน)
@@ -31,15 +31,15 @@ const int buzzerPin = 52;   // Buzzer
 const int enPin = 16;       // Stepper Enable
 const int stepPin = 17;     // Stepper Step
 const int dirPin = 18;      // Stepper Direction
-const int limit_sorter = 31;// Stepper Homing Limit Switch
+const int limit_sorter = 25;// Stepper Homing Limit Switch
 
 // -- Linear Actuator --
-const int feedbackPin = A4; // Actuator Feedback (Analog)
-const int rcPin = 44;       // Actuator PWM Signal
+const int feedbackPin = A3; // Actuator Feedback (Analog)
+const int rcPin = 7;       // Actuator PWM Signal
 
 // -- Small Servo (Transition Push) --
 const int servoPin = 11;    // Small Servo PWM
-const int limit_servo = 30; // Servo Limit Switch
+const int limit_servo = 24; // Servo Limit Switch
 
 // ==========================================
 // 3. HARDWARE OBJECTS
@@ -84,9 +84,10 @@ long positions[4] = {0, 885, 1500, 2400};  // ตำแหน่งช่อง�
 int slotCounts[4] = {0, 0, 0, 0};          // ตัวนับจำนวนของในแต่ละช่อง (สูงสุด 4 ชิ้น)
 
 // --- Linear Actuator ---
-const int POS_RETRACTED = 600;  // ค่า Feedback เมื่อหดกลับสุด
-const int POS_SLOW_START = 300; // ค่า Feedback ที่เริ่มเปลี่ยนเป็นความเร็วช้า
-const int POS_EXTENDED = 100;   // ค่า Feedback เป้าหมายเมื่อยืดสุด
+// จากเดิม const int POS_RETRACTED = 600; ให้แก้เป็น:
+int POS_RETRACTED = 600;  
+int POS_SLOW_START = 300; 
+int POS_EXTENDED = 100;
 
 const int fastInterval = 1;     // ความเร็วช่วงขยับไว
 const int slowInterval = 5;     // ความเร็วช่วงขยับช้า
@@ -107,7 +108,7 @@ int limit_servo_state = 0;
 int servo_stop = 90;
 int servo_forward_slow = 50;
 int servo_forward_fast = 0;
-int servo_backward = 100;
+int servo_backward = 120;
 
 // --- Communication ---
 unsigned long lastSendTime = 0;
@@ -115,8 +116,8 @@ unsigned long lastSendTime = 0;
 void setup() {
   Serial.begin(115200);
 
-  digitalWrite(RESET_PIN, HIGH);
-  pinMode(RESET_PIN, OUTPUT);
+//  digitalWrite(RESET_PIN, HIGH);
+//  pinMode(RESET_PIN, OUTPUT);
 
   digitalWrite(enPin, HIGH);
   pinMode(enPin, OUTPUT);
@@ -138,6 +139,7 @@ void setup() {
   pinMode(intEmer, INPUT_PULLUP);
 
   loadPositionsFromEEPROM();
+  loadActuatorFromEEPROM();
 
   myServo.write(servo_stop); // ⚠️ สั่งตำแหน่งเริ่มต้นก่อน attach (กันเซอร์โวดีด)
   myServo.attach(servoPin);
@@ -151,7 +153,7 @@ void setup() {
   updateDisplay();
   lastStateCLK = digitalRead(CLK_PIN); // อ่านค่าเริ่มต้นหลังไฟนิ่งแล้ว
 
-  attachInterrupt(digitalPinToInterrupt(intEmer), runEmergencyHalt, FALLING);
+//  attachInterrupt(digitalPinToInterrupt(intEmer), runEmergencyHalt, FALLING);
 
   for_beep_fast();
   runHoming();
