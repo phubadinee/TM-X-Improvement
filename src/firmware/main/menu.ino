@@ -125,11 +125,15 @@ void executeMenuAction() {
       // ------------------------------------
       case 5:
         switch (cursorIndex) {
-          case 0: runDetectPart(); break;
+          case 0: runDetectPart(1); break;
           case 1: runAlignPart(); break;
-          case 2: runTrigWaitTMX(); break;
-          case 3: runTransitionPush(); break;
-          case 4: runSortExecute('t'); break;
+          case 2: retractPart(); break;
+          case 3: extendPart(1);retractPart(); break;
+          case 4: extendPart(2);retractPart(); break;
+          case 5: extendPart(3);retractPart(); break;
+          case 6: runTrigWaitTMX(1); break;
+          case 7: runTransitionPush(1); break;
+          case 8: runSortExecute('t'); break;
         }
         break;
     }
@@ -157,5 +161,42 @@ void showActionMessage(const char* actionName) {
   u8g2.setDrawColor(1);
   u8g2.setCursor(10, 40); // ปรับตำแหน่งแกน X, Y ให้พอดี
   u8g2.print(actionName);
+  u8g2.sendBuffer();
+}
+// 1. แสดงผลสถานะหลัก 3 บรรทัด (PKG, Item No, Status)
+void printStatus(String pkgInfo, String itemInfo, String statusInfo) {
+  u8g2.clearBuffer();
+  
+  u8g2.setFont(u8g2_font_6x10_tf);    
+  u8g2.setCursor(4, 15);
+  u8g2.print(pkgInfo);
+
+  u8g2.setCursor(4, 32);
+  u8g2.print(itemInfo);
+
+  u8g2.setFont(u8g2_font_7x13B_tf);   
+  u8g2.setCursor(4, 55);
+  u8g2.print(statusInfo);
+
+  u8g2.sendBuffer();
+}
+
+// 2. ฟังก์ชันพิเศษสำหรับโชว์คำว่า OK หรือ NG ตัวใหญ่ๆ กลางจอ พร้อมกรอบ
+void printBigResult(String resultText) {
+  u8g2.clearBuffer();
+  u8g2.setDrawColor(1);
+  u8g2.drawFrame(0, 0, 128, 64);      // วาดกรอบเต็มจอ
+  u8g2.drawBox(0, 0, 128, 16);        // แถบหัวข้อทึบด้านบน
+
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setCursor(20, 12);
+  u8g2.setDrawColor(0);               // ตัวหนังสือสีดำบนแถบขาว
+  u8g2.print("MEASUREMENT");
+
+  u8g2.setDrawColor(1);
+  u8g2.setFont(u8g2_font_ncenB14_tf); // ใช้ฟอนต์ขนาดใหญ่พิเศษ
+  u8g2.setCursor(35, 45);             // จัดตำแหน่งให้อยู่ตรงกลางจอพอดี
+  u8g2.print(resultText);
+
   u8g2.sendBuffer();
 }

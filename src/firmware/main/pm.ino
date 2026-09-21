@@ -34,6 +34,8 @@ void runManualJogging() {
       // ควบคุม Stepper (Sorter) -> ขยับทีละ 10 สเต็ป
       if (selectedMotor == 0) {
         jogStepPos += (dir * 50);
+        if (jogStepPos < 0) jogStepPos = 0;     // ล็อคขอบเขตหดสุด (ปรับได้)
+        if (jogStepPos > 2500) jogStepPos = 2500;
         stepper.moveTo(jogStepPos);
       }
       // ควบคุม Servo (Push) -> ขยับทีละ 5 องศา
@@ -89,6 +91,7 @@ void runManualJogging() {
         while (digitalRead(STOP_BTN_PIN) == LOW) {
           stepper.run();
         }
+        runSystemHoming();
         delay(50);
         break; // เด้งออกจากลูป กลับเมนูหลัก
       }
@@ -309,11 +312,11 @@ void runDryRun(int set) {
 
   for (int i = 0; i < set; i++) {
     runDetectPart_TEST();
-    extendPart();
+    extendPart(1);
     runTrigWaitTMX_TEST();
     retractPart();
     runSortExecute('t');
-    runTransitionPush();
+    runTransitionPush(1);
   }
 }
 

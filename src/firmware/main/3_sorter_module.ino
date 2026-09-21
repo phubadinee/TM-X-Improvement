@@ -1,5 +1,5 @@
 void runSortExecute(char result) {
-  showActionMessage("Sort Execute...");
+//  showActionMessage("Sort Execute...");
   Serial.println("======= [Start] Sort Execute =======");
   processSlotCommand(result);
   Serial.println("======= [End] Sort Execute ======="); Serial.println();

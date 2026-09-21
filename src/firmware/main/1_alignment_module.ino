@@ -3,45 +3,70 @@ int read_st188() {
   // Serial.print("ST188 Value : ");
   // Serial.println(st188_val);
   int st188_val_map = map(st188_val, 0, 1023, 0, 100);
-  Serial.print("ST188 Value Map : ");
-  Serial.println(st188_val_map);
+  //  Serial.print("ST188 Value Map : ");
+  //  Serial.println(st188_val_map);
 
   return st188_val_map;
 }
 
-int runDetectPart() {
-  showActionMessage("Detecting Part...");
+int runDetectPart(int showlog) {
+
+  if (showlog == 1) {
+    showActionMessage("Detecting Part...");
+  }
   Serial.println("======= [Start] Detecting Part =======");
   delay(1000);
   int detect_val = read_st188();
 
   while (detect_val >= 80) {
-    showActionMessage("No Part...");
+
+    if (showlog == 1) {
+      showActionMessage("No Part...");
+    }
+    // --- ตรวจจับคำสั่ง <STOP> ผ่าน Serial ---
+    if (Serial.available() > 0) {
+      String cmd = Serial.readStringUntil('\n');
+      cmd.trim();
+      if (cmd == "<STOP>") {
+        Serial.println("⚠️ Detection Aborted via Serial!");
+        return -1; // ส่งค่า -1 เพื่อบอกฟังก์ชันหลักให้หยุดทำงาน
+      }
+    }
+
+    // --- ตรวจจับปุ่มกด STOP/BACK ---
+    if (digitalRead(STOP_BTN_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(STOP_BTN_PIN) == LOW) {
+        while (digitalRead(STOP_BTN_PIN) == LOW);
+        return -1;
+      }
+    }
+
     detect_val = read_st188();
-    //    Serial.println(detect_val);
   }
-  showActionMessage("Part Detected !!!");
-  Serial.println("======= [End] Detecting Part ======="); Serial.println();
+
+  //  showActionMessage("Part Detected !!!");
+  Serial.println("======= [End] Detecting Part =======");
+  Serial.println();
   beep(100);
   delay(1000);
 
-  // return detect_status;
+  return 1; // ส่ง 1 กลับไปแปลว่าเจอชิ้นงานปกติ
 }
 
 int runDetectPart_TEST() {
-  showActionMessage("Detecting Part...");
+  //  showActionMessage("Detecting Part...");
   Serial.println("======= [Start] Detecting Part =======");
   delay(1000);
 
   for_beep();
-  
-  showActionMessage("Part Detected !!!");
+
+  //  showActionMessage("Part Detected !!!");
   Serial.println("======= [End] Detecting Part ======="); Serial.println();
   beep(100);
   delay(1000);
 
 }
-
 
 int readPositionSmoothly() {
   long sum = 0;
@@ -51,20 +76,34 @@ int readPositionSmoothly() {
   return sum / 5;
 }
 
-// =======================================================
-// ฟังก์ชันสำหรับ ยืดออก (Fast -> Slow -> Pause 5s)
-// =======================================================
-void extendPart() {
-  Serial.println("======= [Start] Extending Part =======");
-  
-  currentState = FAST_EXTEND; 
-  bool isExtending = true; 
+void extendPart(int targetType) {
+  Serial.print("======= [Start] Extending Part (Type: ");
+  Serial.print(targetType);
+  Serial.println(") =======");
 
-  while (isExtending) { 
+  int targetPos;
+
+  // เลือกระยะเป้าหมายตามที่ส่งเข้ามา (1=Short, 2=Mid, 3=Long)
+  if (targetType == 1) {
+    targetPos = POS_EXTEND_SHORT;
+  } else if (targetType == 2) {
+    targetPos = POS_EXTEND_MID;
+  } else if (targetType == 3) {
+    targetPos = POS_EXTEND_LONG;
+  } else {
+    targetPos = POS_EXTEND_SHORT; // ค่า Default
+  }
+
+  // คำนวณจุดที่เริ่มลดความเร็วแบบอัตโนมัติ
+  int slowThreshold = targetPos + ((POS_RETRACTED - targetPos) / 3);
+
+  currentState = FAST_EXTEND;
+  bool isExtending = true;
+
+  while (isExtending) {
     int currentPos = readPositionSmoothly();
 
     switch (currentState) {
-      // 1. ยืดออกช่วงแรก (แบบเร็ว)
       case FAST_EXTEND:
         if (millis() - lastMoveTime >= fastInterval) {
           if (servoPWM < 2000) servoPWM += fastExtendStep;
@@ -72,13 +111,12 @@ void extendPart() {
           lastMoveTime = millis();
         }
 
-        if (currentPos <= POS_SLOW_START) {
+        if (currentPos <= slowThreshold) {
           Serial.println("-> Reached slow threshold: Switching to SLOW mode");
           currentState = SLOW_EXTEND;
         }
         break;
 
-      // 2. ยืดออกช่วงท้าย (แบบช้า)
       case SLOW_EXTEND:
         if (millis() - lastMoveTime >= slowInterval) {
           if (servoPWM < 2000) servoPWM += slowExtendStep;
@@ -86,47 +124,48 @@ void extendPart() {
           lastMoveTime = millis();
         }
 
-        if (currentPos <= POS_EXTENDED) {
-          Serial.println("-> Reached MAX extension: Pausing for 5 seconds");
+        if (currentPos <= targetPos) {
+          Serial.println("-> Reached MAX extension: Pausing");
           pauseStartTime = millis();
           currentState = PAUSE;
         }
         break;
 
-      // 3. หยุดรอ 5 วินาทีที่ตำแหน่งยืดสุด
       case PAUSE:
-        actuator.writeMicroseconds(servoPWM); // ล็อคตำแหน่งไว้
+        actuator.writeMicroseconds(servoPWM);
 
         if (millis() - pauseStartTime >= pauseDuration) {
           Serial.println("-> Pause finished: Ready to retract");
-          isExtending = false; // ออกจากฟังก์ชันยืดออก
+          isExtending = false;
         }
         break;
     }
 
     if (isExtending) {
-      Serial.print("Extend State: ");
-      Serial.print(currentState);
-      Serial.print(" | Feedback: ");
-      Serial.print(currentPos);
-      Serial.print(" | PWM: ");
-      Serial.println(servoPWM);
+      //      Serial.print("State: ");
+      //      Serial.print(currentState);
+      //      Serial.print(" | FB: ");
+      //      Serial.print(currentPos);
+      //      Serial.print(" | Target: ");
+      //      Serial.print(targetPos);
+      //      Serial.print(" | PWM: ");
+      //      Serial.println(servoPWM);
     }
     delay(10);
   }
-  
-  Serial.println("======= [End] Part Extended ======="); 
+
+  Serial.println("======= [End] Part Extended =======");
   Serial.println();
 }
 
 
 void retractPart() {
   Serial.println("======= [Start] Retracting Part =======");
-  
-  currentState = FAST_RETRACT; 
-  bool isRetracting = true; 
 
-  while (isRetracting) { 
+  currentState = FAST_RETRACT;
+  bool isRetracting = true;
+
+  while (isRetracting) {
     int currentPos = readPositionSmoothly();
 
     switch (currentState) {
@@ -155,17 +194,17 @@ void retractPart() {
     }
     delay(10);
   }
-  
-  Serial.println("======= [End] Part Retracted ======="); 
+
+  Serial.println("======= [End] Part Retracted =======");
   Serial.println();
 }
 
 
 void runAlignPart() {
   showActionMessage("Aligning Part...");
-  
-  extendPart();   // สั่งยืดออก และรอ 5 วินาที
+
+  extendPart(1);   // สั่งยืดออก และรอ 5 วินาที
   retractPart();  // สั่งหดกลับ
-  
+
   Serial.println("======= Cycle Completed =======");
 }

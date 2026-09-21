@@ -1,169 +1,198 @@
 void setActuatorStroke() {
-  int stepMovePWM = 20; // การขยับ PWM ต่อ 1 คลิก (ปรับให้ขยับเร็ว/ช้าได้ที่นี่)
-  int selectedItem = 0; // 0=Retract, 1=Slow Start, 2=Extend, 3=Save & Exit
+  int stepMovePWM = 30; 
+  int selectedItem = 0; // 0=Retract, 1=Short, 2=Mid, 3=Long, 4=Save & Exit
   bool adjustingMode = false;
   
-  int tempPWM = servoPWM; // ดึงค่า PWM ปัจจุบันมาใช้เป็นจุดเริ่มต้น
+  int tempPWM = servoPWM; 
   int currentFeedback = readPositionSmoothly();
 
   int scrollOffsetAdj = 0;
-  const int maxVisibleAdj = 4;
+  const int maxVisibleAdj = 4; // โชว์หน้าจอทีละ 4 บรรทัด
   int lastClk = digitalRead(CLK_PIN);
   bool redraw = true;
   unsigned long lastUpdateFB = 0;
 
-  // เมนูและอาเรย์พักค่าชั่วคราว
-  const char* strokeMenu[] = {"1. Retract Pos", "2. Slow Start Pos", "3. Extend Pos", "Save & Exit"};
-  int strokeValues[] = {POS_RETRACTED, POS_SLOW_START, POS_EXTENDED};
+  // เมนูตั้งค่า 5 บรรทัด
+  const char* strokeMenu[] = {"1. Retract Pos", "2. Ext. Short", "3. Ext. Mid", "4. Ext. Long", "Save & Exit"};
+  int strokeValues[] = {POS_RETRACTED, POS_EXTEND_SHORT, POS_EXTEND_MID, POS_EXTEND_LONG};
 
   while (true) {
-    // 1. จัดการวาดหน้าจอ
     if (redraw) {
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_6x10_tf);
 
       if (!adjustingMode) {
-        // ==========================================
-        // โหมดเลือกหัวข้อที่จะตั้งค่า
-        // ==========================================
+        // --- โหมดเลือกหัวข้อ ---
         u8g2.setDrawColor(1);
         u8g2.setCursor(2, 9);
         u8g2.print("ADJUST ACTUATOR");
         u8g2.drawLine(0, 12, 128, 12);
 
-        // คำนวณการเลื่อนหน้าจอ
         if (selectedItem >= scrollOffsetAdj + maxVisibleAdj) scrollOffsetAdj = selectedItem - maxVisibleAdj + 1;
         else if (selectedItem < scrollOffsetAdj) scrollOffsetAdj = selectedItem;
 
         for (int i = 0; i < maxVisibleAdj; i++) {
           int itemIndex = scrollOffsetAdj + i;
-          if (itemIndex > 3) break;
-
+          if (itemIndex > 4) break; 
           int yPos = 24 + (i * 12);
 
           if (itemIndex == selectedItem) {
             u8g2.setDrawColor(1);
             u8g2.drawBox(0, yPos - 9, 128, 11);
-            u8g2.setDrawColor(0); // ตัวอักษรสีดำบนแถบขาว
+            u8g2.setDrawColor(0);
           } else {
-            u8g2.setDrawColor(1); // ตัวอักษรสีขาว
+            u8g2.setDrawColor(1);
           }
 
           u8g2.setCursor(4, yPos);
           u8g2.print(strokeMenu[itemIndex]);
           
-          // โชว์ค่า Feedback ปัจจุบันที่ถูกตั้งไว้
-          if (itemIndex < 3) {
+          if (itemIndex < 4) {
             u8g2.print(": ");
             u8g2.print(strokeValues[itemIndex]);
           }
         }
       } else {
-        // ==========================================
-        // โหมดกำลังหมุนปรับระยะ (โชว์ PWM และ Feedback สดๆ)
-        // ==========================================
+        // --- โหมดกำลังปรับค่าด้วยมือ ---
         currentFeedback = readPositionSmoothly();
-
         u8g2.setDrawColor(1);
         u8g2.drawFrame(0, 0, 128, 64);
         u8g2.drawBox(0, 0, 128, 18);
-
         u8g2.setDrawColor(0);
         u8g2.setCursor(13, 13);
         u8g2.print(">>> ADJUSTING <<<");
 
         u8g2.setDrawColor(1);
         u8g2.setCursor(10, 35);
-        u8g2.print(strokeMenu[selectedItem]); // โชว์ว่ากำลังปรับตัวไหนอยู่
+        u8g2.print(strokeMenu[selectedItem]); 
 
         u8g2.setCursor(10, 50);
-        u8g2.print("PWM: ");
-        u8g2.print(tempPWM);
-        u8g2.print(" FB: ");
+        u8g2.print("Set FB to: ");
         u8g2.print(currentFeedback);
       }
       u8g2.sendBuffer();
       redraw = false;
     }
 
-    // เพื่อให้จออัปเดตค่า Feedback (FB) วิ่งตามจริงแบบ Realtime ตอนขยับ Actuator
-    if (adjustingMode && millis() - lastUpdateFB > 100) {
+    if (adjustingMode && millis() - lastUpdateFB > 150) {
       redraw = true;
       lastUpdateFB = millis();
     }
 
-    // 2. อ่านค่า Rotary Encoder
     int clkState = digitalRead(CLK_PIN);
     if (clkState != lastClk && clkState == HIGH) {
-      int dtState = digitalRead(DT_PIN);
+      if (millis() - lastRotaryTime > 5) { 
+        int dtState = digitalRead(DT_PIN);
 
-      if (!adjustingMode) {
-        // เลื่อนขึ้น-ลง ในเมนู
-        if (dtState != clkState) selectedItem++;
-        else selectedItem--;
+        if (!adjustingMode) {
+          if (dtState != clkState) selectedItem++;
+          else selectedItem--;
+          if (selectedItem < 0) selectedItem = 4;
+          if (selectedItem > 4) selectedItem = 0;
+          redraw = true;
+        } else {
+          if (dtState != clkState) tempPWM += stepMovePWM;
+          else tempPWM -= stepMovePWM;
 
-        if (selectedItem < 0) selectedItem = 3;
-        if (selectedItem > 3) selectedItem = 0;
-      } else {
-        // โหมดปรับค่า: หมุนเพื่อปรับค่า PWM สั่งมอเตอร์ยืด/หด
-        if (dtState != clkState) tempPWM += stepMovePWM; // หมุนขวา
-        else tempPWM -= stepMovePWM;                     // หมุนซ้าย
-
-        // ป้องกันค่า PWM เกินมาตรฐาน (ส่วนใหญ่ 1000 - 2000)
-        if (tempPWM < 900) tempPWM = 900;
-        if (tempPWM > 2100) tempPWM = 2100;
-        
-        // สั่งขยับ Actuator ทันที
-        actuator.writeMicroseconds(tempPWM);
+          if (tempPWM < 900) tempPWM = 900;
+          if (tempPWM > 2100) tempPWM = 2100;
+          actuator.writeMicroseconds(tempPWM); 
+        }
+        lastRotaryTime = millis();
       }
-      redraw = true;
     }
     lastClk = clkState;
 
-    // 3. อ่านปุ่มกด (SW)
     if (digitalRead(SW_PIN) == LOW) {
       delay(50);
       if (digitalRead(SW_PIN) == LOW) {
         if (!adjustingMode) {
-          if (selectedItem == 3) {
-            // "Save & Exit" -> บันทึกค่าลงตัวแปรหลัก และลง EEPROM
+          if (selectedItem == 4) { 
+            // "Save & Exit"
             POS_RETRACTED = strokeValues[0];
-            POS_SLOW_START = strokeValues[1];
-            POS_EXTENDED = strokeValues[2];
+            POS_EXTEND_SHORT = strokeValues[1];
+            POS_EXTEND_MID = strokeValues[2];
+            POS_EXTEND_LONG = strokeValues[3];
             
-            saveActuatorToEEPROM(); // บันทึกลง EEPROM
+            saveActuatorToEEPROM(); 
             
-            showActionMessage("Saved!"); // โชว์ข้อความว่าเซฟเสร็จแล้ว
+            showActionMessage("  Stroke Saved!");
+            for_beep_fast();
             delay(1000);
             while (digitalRead(SW_PIN) == LOW);
-            break; // ออกจากฟังก์ชัน
+            break; 
           } else {
-            // เข้าสู่โหมดปรับค่า
+            // ========================================================
+            // ฟีเจอร์ใหม่: วิ่งไปหาตำแหน่งล่าสุดอัตโนมัติ ก่อนให้ปรับจูนต่อ
+            // ========================================================
+            int targetFB = strokeValues[selectedItem];
+            
+            // แสดงหน้าจอ "กำลังวิ่งไปที่ตำแหน่งเดิม"
+            u8g2.clearBuffer();
+            u8g2.setDrawColor(1);
+            u8g2.drawFrame(0, 0, 128, 64);
+            u8g2.drawBox(0, 0, 128, 18);
+            u8g2.setDrawColor(0);
+            u8g2.setCursor(13, 13);
+            u8g2.print(">>> MOVING <<<");
+            u8g2.setDrawColor(1);
+            u8g2.setCursor(10, 35);
+            u8g2.print("Seeking Saved Pos:");
+            u8g2.setCursor(10, 50);
+            u8g2.print(targetFB);
+            u8g2.sendBuffer();
+
+            unsigned long moveStartTime = millis();
+            
+            // ลูปค้นหาตำแหน่ง (ให้เวลาสูงสุด 5 วินาที ป้องกันมอเตอร์ค้าง)
+            while (millis() - moveStartTime < 5000) {
+              int currentFB = readPositionSmoothly();
+              
+              // ถ้าระยะคลาดเคลื่อนไม่เกิน 5 แต้ม ถือว่าถึงที่หมายแล้ว
+              if (abs(currentFB - targetFB) <= 5) break; 
+              
+              if (currentFB > targetFB + 2) { 
+                if (servoPWM < 2100) servoPWM += 5; // เพิ่ม PWM เพื่อยืด
+              } else if (currentFB < targetFB - 2) {
+                if (servoPWM > 900) servoPWM -= 5;  // ลด PWM เพื่อหด
+              }
+              actuator.writeMicroseconds(servoPWM);
+              delay(10);
+              
+              // ดักจับปุ่มกด (ถ้าอยากยกเลิกกลางคัน ให้กดปุ่ม Rotary หรือปุ่ม Back)
+              if (digitalRead(STOP_BTN_PIN) == LOW || digitalRead(SW_PIN) == LOW) {
+                delay(100);
+                while(digitalRead(STOP_BTN_PIN) == LOW || digitalRead(SW_PIN) == LOW);
+                break;
+              }
+            }
+
+            // เมื่อวิ่งมาถึงที่หมายเสร็จแล้ว ก็เข้าโหมด Adjust ตามปกติ
             adjustingMode = true;
+            tempPWM = servoPWM; // ดึงค่า PWM ที่เพิ่งวิ่งมาถึงไปใช้ต่อ
             redraw = true;
           }
         } else {
-          // กดปุ่มขณะกำลังปรับค่า -> ตกลงใช้ค่า Feedback ปัจจุบัน
+          // กดยืนยันการปรับค่าด้วยมือ
           currentFeedback = readPositionSmoothly();
-          strokeValues[selectedItem] = currentFeedback; // จำค่าไว้ในอาเรย์ชั่วคราวก่อน
+          strokeValues[selectedItem] = currentFeedback; 
+          servoPWM = tempPWM; 
           
-          adjustingMode = false; // กลับไปหน้าเลือกเมนู
+          adjustingMode = false;
           redraw = true;
         }
-
         while (digitalRead(SW_PIN) == LOW);
       }
     }
 
-    // 4. อ่านปุ่ม STOP / BACK
     if (digitalRead(STOP_BTN_PIN) == LOW) {
       delay(50);
       if (digitalRead(STOP_BTN_PIN) == LOW) {
         if (adjustingMode) {
-          adjustingMode = false; // ยกเลิกการปรับค่า ย้อนกลับไปหน้าเลือกเมนู
+          adjustingMode = false; 
           redraw = true;
         } else {
-          break; // ออกจากฟังก์ชันเลย (ทิ้งค่าที่ตั้งไว้ ไม่ Save)
+          break; 
         }
         while (digitalRead(STOP_BTN_PIN) == LOW);
       }
@@ -171,7 +200,7 @@ void setActuatorStroke() {
   }
 
   u8g2.clearBuffer();
-  lastCursorIndex = -1; // บังคับให้เมนูหลักรีเฟรชหน้าจอ
+  lastCursorIndex = -1;
 }
 
 void setSorterOffset() {
@@ -311,6 +340,8 @@ void setSorterOffset() {
             // บันทึกค่าลง EEPROM ตามฟังก์ชัน savePositionsToEEPROM() ที่เราสร้างไว้
             savePositionsToEEPROM();
             while (digitalRead(SW_PIN) == LOW);
+            showActionMessage("  Sorter Saved!");
+            for_beep_fast();
             break; // ออกจากฟังก์ชัน
           } else {
             adjustingMode = true;
