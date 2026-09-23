@@ -19,6 +19,8 @@ char runTrigWaitTMX(int showlog) {
   bool receivedAck = false;
   while (!receivedAck) {
 
+    checkEmergencyReboot();
+    
     // --- ตรวจจับ Serial ---
     if (Serial.available()) {
       String response = Serial.readStringUntil('\n');
@@ -85,6 +87,9 @@ void  runCommunicationTesting() {
 
   // 4. วนลูปรอคำตอบกลับจนกว่าจะหมดเวลา
   while (millis() - startTime < timeout) {
+    
+    checkEmergencyReboot();
+    
     if (Serial.available()) {
       String response = Serial.readStringUntil('\n');
       response.trim();
@@ -121,6 +126,9 @@ int waitForPackageType() {
   Serial.println("Waiting for <PKG:WxH> command...");
 
   while (true) {
+
+    checkEmergencyReboot();
+    
     // 1. ตรวจสอบข้อมูลจาก Serial
     if (Serial.available() > 0) {
       String cmd = Serial.readStringUntil('\n');
@@ -191,4 +199,25 @@ int waitForPackageType() {
       }
     }
   }
+}
+
+int waitForPackageType_TEST() {
+  Serial.println("Waiting for <PKG:WxH> command... (TEST MODE)");
+  
+  // หน่วงเวลา 0.5 วินาที ให้ผู้ใช้งานมองเห็นหน้าจอ "Wait PKG..." ได้ทัน
+  delay(500); 
+
+  // สมมติชื่อแพ็กเกจเพื่อนำไปโชว์บนหน้าจอ OLED
+  String mockPkg = "TEST"; 
+  lastReceivedPkg = mockPkg; 
+
+  Serial.print("Received Package Size: [");
+  Serial.print(mockPkg);
+  Serial.println("] (Mocked)");
+  
+  Serial.println("Matched: TEST Group (Defaulting to Type 1)");
+
+  // คืนค่าระดับการยืดก้านที่ 1 (Short) เพื่อให้ระบบทำงานในสเต็ปถัดไปต่อได้ทันที
+  // (หากต้องการทดสอบระยะอื่น สามารถเปลี่ยนเป็น return 2 หรือ 3 ได้ครับ)
+  return 1; 
 }

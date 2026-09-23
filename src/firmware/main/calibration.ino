@@ -17,6 +17,9 @@ void setActuatorStroke() {
   int strokeValues[] = {POS_RETRACTED, POS_EXTEND_SHORT, POS_EXTEND_MID, POS_EXTEND_LONG};
 
   while (true) {
+
+    checkEmergencyReboot();
+    
     if (redraw) {
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_6x10_tf);
@@ -114,7 +117,7 @@ void setActuatorStroke() {
             POS_EXTEND_MID = strokeValues[2];
             POS_EXTEND_LONG = strokeValues[3];
             
-            saveActuatorToEEPROM(); 
+            saveAllToEEPROM();
             
             showActionMessage("  Stroke Saved!");
             for_beep_fast();
@@ -232,6 +235,9 @@ void setSorterOffset() {
   digitalWrite(enPin, LOW); // เปิดไฟเลี้ยงมอเตอร์เตรียมขยับ
 
   while (true) {
+
+    checkEmergencyReboot();
+    
     // 1. จัดการการวาดหน้าจอ OLED
     if (redraw) {
       u8g2.clearBuffer();
@@ -338,7 +344,7 @@ void setSorterOffset() {
         if (!adjustingMode) {
           if (selectedSlot == 4) {
             // บันทึกค่าลง EEPROM ตามฟังก์ชัน savePositionsToEEPROM() ที่เราสร้างไว้
-            savePositionsToEEPROM();
+            saveAllToEEPROM();
             while (digitalRead(SW_PIN) == LOW);
             showActionMessage("  Sorter Saved!");
             for_beep_fast();
@@ -380,4 +386,161 @@ void setSorterOffset() {
   pauseMotor();
   u8g2.clearBuffer();
   lastCursorIndex = -1; // บังคับให้วาดเมนูหลักใหม่เพื่อรีเฟรชหน้าจอ
+}
+
+void toggleAutoSortMenu() {
+  bool tempState = autoSortEnabled;
+  int lastClk = digitalRead(CLK_PIN);
+  bool redraw = true;
+
+  while (true) {
+
+    checkEmergencyReboot();
+    
+    if (redraw) {
+      u8g2.clearBuffer();
+      u8g2.setDrawColor(1);
+      u8g2.drawFrame(0, 0, 128, 64);
+      u8g2.drawBox(0, 0, 128, 18);
+      u8g2.setDrawColor(0);
+      u8g2.setFont(u8g2_font_6x10_tf);
+      u8g2.setCursor(15, 13);
+      u8g2.print("AUTO SORT MODE");
+
+      u8g2.setDrawColor(1);
+      u8g2.setFont(u8g2_font_8x13B_tf);
+      
+      if (tempState) {
+        u8g2.setCursor(35, 40);
+        u8g2.print("[ ON ]");
+      } else {
+        u8g2.setCursor(30, 40);
+        u8g2.print("[ OFF ]");
+      }
+
+      u8g2.setFont(u8g2_font_6x10_tf);
+      u8g2.setCursor(15, 58);
+      u8g2.print("Press SW to Save");
+
+      u8g2.sendBuffer();
+      redraw = false;
+    }
+
+    // หมุนเพื่อสลับ ON/OFF
+    int clkState = digitalRead(CLK_PIN);
+    if (clkState != lastClk && clkState == HIGH) {
+      tempState = !tempState; // สลับค่า
+      redraw = true;
+    }
+    lastClk = clkState;
+
+    // กดปุ่มเพื่อบันทึก
+    if (digitalRead(SW_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(SW_PIN) == LOW) {
+        autoSortEnabled = tempState;
+        
+        // ========================================================
+        // [แก้ไขตรงนี้] บันทึก Flag ก่อน แล้วค่อยบันทึกค่าที่ Address ถัดไป
+        EEPROM.update(EEPROM_ADDR_AUTOSORT, EEPROM_INIT_FLAG); 
+        EEPROM.put(EEPROM_ADDR_AUTOSORT + 1, autoSortEnabled); 
+        // ========================================================
+        
+        showActionMessage("  Setting Saved!");
+        for_beep_fast();
+        while (digitalRead(SW_PIN) == LOW);
+        break;
+      }
+    }
+
+    // กด STOP เพื่อยกเลิก
+    if (digitalRead(STOP_BTN_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(STOP_BTN_PIN) == LOW) {
+        while (digitalRead(STOP_BTN_PIN) == LOW);
+        break;
+      }
+    }
+  }
+  
+  u8g2.clearBuffer();
+  lastCursorIndex = -1;
+}
+
+
+void setSensorST188() {
+  int step = 0; // 0 = รออ่านค่าตอนไม่มีของ, 1 = รออ่านค่าตอนมีของ
+  int valEmpty = 0;
+  int valPart = 0;
+  
+  while (true) {
+
+    checkEmergencyReboot();
+    
+    int currentVal = read_st188(); // อ่านค่าเรียลไทม์ (0-100)
+
+    u8g2.clearBuffer();
+    u8g2.setDrawColor(1);
+    u8g2.drawFrame(0, 0, 128, 64);
+    u8g2.drawBox(0, 0, 128, 18);
+    u8g2.setDrawColor(0);
+    u8g2.setFont(u8g2_font_6x10_tf);
+    
+    const char* title = "CALIBRATE ST188";
+    int titleX = (128 - u8g2.getStrWidth(title)) / 2;
+    u8g2.drawStr(titleX, 13, title);
+
+    u8g2.setDrawColor(1);
+    
+    if (step == 0) {
+      u8g2.drawStr(10, 35, "1. Clear Sensor"); // สเต็ป 1: เคลียร์แท่น
+    } else {
+      u8g2.drawStr(10, 35, "2. Place Part");   // สเต็ป 2: วางชิ้นงาน
+    }
+
+    u8g2.setCursor(10, 50);
+    u8g2.print("Live Value: ");
+    u8g2.print(currentVal);
+
+    u8g2.sendBuffer();
+
+    // --- ตรวจจับปุ่มกดยืนยัน (SW) ---
+    if (digitalRead(SW_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(SW_PIN) == LOW) {
+        if (step == 0) {
+          valEmpty = currentVal; // บันทึกค่าแท่นเปล่า
+          step = 1;              // ขยับไปสเต็ป 2
+          for_beep_fast();
+        } else {
+          valPart = currentVal;  // บันทึกค่ามีของ
+          
+          // คำนวณค่ากึ่งกลาง (Threshold)
+          st188Threshold = (valEmpty + valPart) / 2; 
+          saveAllToEEPROM();   // บันทึกลง EEPROM
+          
+          showActionMessage("  Threshold Saved!");
+          for_beep_fast();
+          delay(1000);
+          while(digitalRead(SW_PIN) == LOW);
+          break; // ออกจากฟังก์ชัน
+        }
+        while(digitalRead(SW_PIN) == LOW);
+      }
+    }
+
+    // --- ตรวจจับปุ่มยกเลิก (STOP/BACK) ---
+    if (digitalRead(STOP_BTN_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(STOP_BTN_PIN) == LOW) {
+        while (digitalRead(STOP_BTN_PIN) == LOW);
+        break; // ออกจากฟังก์ชันโดยไม่เซฟ
+      }
+    }
+    
+    delay(50); // กันจอภาพกระพริบรัวเกินไป
+  }
+  
+  u8g2.clearBuffer();
+  lastCursorIndex = -1;
 }

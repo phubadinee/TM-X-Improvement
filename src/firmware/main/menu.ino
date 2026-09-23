@@ -36,7 +36,7 @@ void drawMenu(const char* title, const char* items[], int itemCount) {
   u8g2.setDrawColor(1);
   u8g2.setCursor(2, 9);
   u8g2.print(title);
-  
+
   // เส้นคั่นหัวข้อแบบเต็มจอ
   u8g2.drawLine(0, 12, 128, 12);
 
@@ -58,12 +58,12 @@ void drawMenu(const char* title, const char* items[], int itemCount) {
       // แถบ Highlight สีขาว วาดเต็มความกว้างจอ (128 px)
       u8g2.setDrawColor(1);
       u8g2.drawBox(0, yPos - 9, 128, 11);
-      
+
       // ตัวหนังสือสีดำบนแถบขาว
-      u8g2.setDrawColor(0); 
+      u8g2.setDrawColor(0);
     } else {
       // ตัวหนังสือปกติสีขาว
-      u8g2.setDrawColor(1); 
+      u8g2.setDrawColor(1);
     }
 
     u8g2.setCursor(4, yPos);
@@ -103,8 +103,10 @@ void executeMenuAction() {
       // ------------------------------------
       case 3:
         switch (cursorIndex) {
-          case 0: setActuatorStroke(); break;
-          case 1: setSorterOffset(); break;
+          case 0: setSensorST188(); break;
+          case 1: setActuatorStroke(); break;
+          case 2: setSorterOffset(); break;
+          case 3: toggleAutoSortMenu(); break;
         }
         break;
 
@@ -116,7 +118,7 @@ void executeMenuAction() {
           case 0: runIOTesting(); break;
           case 1: runManualJogging(); break;
           case 2: runCommunicationTesting(); break;
-          case 3: runDryRun(5); break;
+          case 3: runDryRun(2); break;
         }
         break;
 
@@ -128,9 +130,9 @@ void executeMenuAction() {
           case 0: runDetectPart(1); break;
           case 1: runAlignPart(); break;
           case 2: retractPart(); break;
-          case 3: extendPart(1);retractPart(); break;
-          case 4: extendPart(2);retractPart(); break;
-          case 5: extendPart(3);retractPart(); break;
+          case 3: extendPart(1); retractPart(); break;
+          case 4: extendPart(2); retractPart(); break;
+          case 5: extendPart(3); retractPart(); break;
           case 6: runTrigWaitTMX(1); break;
           case 7: runTransitionPush(1); break;
           case 8: runSortExecute('t'); break;
@@ -144,13 +146,13 @@ void executeMenuAction() {
 void showActionMessage(const char* actionName) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tf);
-  
+
   // วาดกรอบสี่เหลี่ยมเต็มขอบหน้าจอ (128x64)
   u8g2.setDrawColor(1);
   u8g2.drawFrame(0, 0, 128, 64);
-  
+
   // วาดแถบทึบด้านบนเป็น Header แบบเต็มจอ
-  u8g2.drawBox(0, 0, 128, 18); 
+  u8g2.drawBox(0, 0, 128, 18);
 
   // ข้อความ Header สีดำทับพื้นขาว (Invert)
   u8g2.setDrawColor(0);
@@ -166,15 +168,15 @@ void showActionMessage(const char* actionName) {
 // 1. แสดงผลสถานะหลัก 3 บรรทัด (PKG, Item No, Status)
 void printStatus(String pkgInfo, String itemInfo, String statusInfo) {
   u8g2.clearBuffer();
-  
-  u8g2.setFont(u8g2_font_6x10_tf);    
+
+  u8g2.setFont(u8g2_font_6x10_tf);
   u8g2.setCursor(4, 15);
   u8g2.print(pkgInfo);
 
   u8g2.setCursor(4, 32);
   u8g2.print(itemInfo);
 
-  u8g2.setFont(u8g2_font_7x13B_tf);   
+  u8g2.setFont(u8g2_font_7x13B_tf);
   u8g2.setCursor(4, 55);
   u8g2.print(statusInfo);
 
@@ -194,8 +196,27 @@ void printBigResult(String resultText) {
   u8g2.print("MEASUREMENT");
 
   u8g2.setDrawColor(1);
-  u8g2.setFont(u8g2_font_ncenB14_tf); // ใช้ฟอนต์ขนาดใหญ่พิเศษ
+  u8g2.setFont(u8g2_font_t0_13b_tf); // ใช้ฟอนต์ขนาดใหญ่พิเศษ
   u8g2.setCursor(35, 45);             // จัดตำแหน่งให้อยู่ตรงกลางจอพอดี
+  u8g2.print(resultText);
+
+  u8g2.sendBuffer();
+}
+
+void printBigResult2(String resultText) {
+  u8g2.clearBuffer();
+  u8g2.setDrawColor(1);
+  u8g2.drawFrame(0, 0, 128, 64);      // วาดกรอบเต็มจอ
+  u8g2.drawBox(0, 0, 128, 16);        // แถบหัวข้อทึบด้านบน
+
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setCursor(20, 12);
+  u8g2.setDrawColor(0);               // ตัวหนังสือสีดำบนแถบขาว
+  u8g2.print("MEASUREMENT");
+
+  u8g2.setDrawColor(1);
+  u8g2.setFont(u8g2_font_7x14B_tf); // ใช้ฟอนต์ขนาดใหญ่พิเศษ
+  u8g2.setCursor(20, 45);             // จัดตำแหน่งให้อยู่ตรงกลางจอพอดี
   u8g2.print(resultText);
 
   u8g2.sendBuffer();

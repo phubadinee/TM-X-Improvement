@@ -241,7 +241,7 @@ void runIOTesting() {
       int st188_val_map = map(st188_val, 0, 1023, 0, 100);
 
       // ตั้งเกณฑ์สมมติ (แก้ตัวเลขได้): ถ้าค่าน้อยกว่า 80 ถือว่าเจอชิ้นงาน
-      bool isDetected = (st188_val_map < 80);
+      bool isDetected = (st188_val_map < st188Threshold);
 
       u8g2.setCursor(5, 32);
       u8g2.print("ST188 (Raw) : ");
@@ -308,18 +308,71 @@ void runIOTesting() {
 }
 
 void runDryRun(int set) {
-  showActionMessage("Starting Machine...");
+  Serial.println("======= [Start] Dry Run Mode =======");
 
   for (int i = 0; i < set; i++) {
-    runDetectPart_TEST();
-    extendPart(1);
-    runTrigWaitTMX_TEST();
-    retractPart();
-    runSortExecute('t');
-    runTransitionPush(1);
-  }
-}
+    
+    // อัปเดตหน้าจอ OLED ให้แสดงว่ากำลังทำงานรอบที่เท่าไหร่
+    String statusText = "Running " + String(i + 1) + "/" + String(set);
+    showActionMessage(statusText.c_str());
 
+    // --- ตรวจจับการกดปุ่ม STOP / BACK ก่อนเริ่มแต่ละรอบ ---
+    if (digitalRead(STOP_BTN_PIN) == LOW) {
+      delay(50); // หน่วงเวลาป้องกันสัญญาณสั่น
+      if (digitalRead(STOP_BTN_PIN) == LOW) {
+        Serial.println("⚠️ Dry Run Aborted by User!");
+        retractPart(); // สั่งดึงก้านมอเตอร์เก็บเพื่อความปลอดภัย
+        while (digitalRead(STOP_BTN_PIN) == LOW); 
+        break; // กระโดดออกจากลูป for ทันที
+      }
+    }
+
+    Serial.print("--- Running Set: ");
+    Serial.print(i + 1);
+    Serial.print(" / ");
+    Serial.println(set);
+
+    runDetectPart_TEST();
+    
+    // ใช้ฟังก์ชันแบบมี _check เพื่อให้เหมือนระบบรันจริง
+    if (extendPart_check(1) == -1) {
+      retractPart();
+      printBigResult2("DRY RUN FAILED");
+      delay(1500);
+      break; // ถ้าก้านติดขัดตอนเทส ให้ยกเลิก Dry Run ทันที
+    }
+
+    runTrigWaitTMX_TEST();
+
+    // ==================================================
+    // ตรวจสอบเงื่อนไข Auto Sort (เหมือนตอนรันจริง)
+    // ==================================================
+    if (autoSortEnabled == true) {
+      // โหมดเปิด Auto: หดก้าน, คัดแยก, และผลักชิ้นงาน
+      retractPart();
+      runSortExecute('t');   // ส่ง 't' ไปเพื่อจำลองการวิ่งไปทุกช่อง
+      runTransitionPush(0);  // ปิด log ซ้ำซ้อนตอนผลัก
+    } else {
+      // โหมดปิด Auto: หดก้าน แล้วรอคนหยิบออก
+      retractPart();
+      showActionMessage("Pick up Part!");
+      
+      // ฟังก์ชันรอหยิบของ (ถ้าไม่มีของวางอยู่แต่แรก มันจะตรวจว่าว่างและเด้งผ่านไปรอบต่อไปทันที)
+      if (waitForPartRemoval() == -1) {
+        Serial.println("⚠️ Dry Run Aborted during Part Removal!");
+        break;
+      }
+    }
+  }
+
+  Serial.println("======= [End] Dry Run Mode =======");
+  
+  // เมื่อทำงานครบเซ็ต หรือกดยกเลิก ให้รีเฟรชหน้าจอกลับไปเมนูหลัก
+  currentMenu = 0;
+  cursorIndex = 0;
+  scrollOffset = 0;
+  updateDisplay();
+}
 void showPiMessage(const char* msg) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tf);
@@ -397,4 +450,39 @@ void runPiMonitor() {
   currentMenu = 0;
   cursorIndex = 0;
   scrollOffset = 0;
+}
+
+void checkEmergencyReboot() {
+  // ถ้ามีการกดปุ่ม Rotary (SW)
+  if (digitalRead(SW_PIN) == LOW) {
+    unsigned long pressStartTime = millis();
+    bool isLongPress = false;
+
+    // วนลูปรอจนกว่าจะปล่อยปุ่ม หรือกดค้างเกิน 3 วินาที
+    while (digitalRead(SW_PIN) == LOW) {
+      if (millis() - pressStartTime >= 3000) {
+        isLongPress = true;
+        break;
+      }
+    }
+
+    // ถ้ากดค้างครบ 3 วินาที สั่ง Reboot ทันที
+    if (isLongPress) {
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_8x13B_tf); // ถ้าใช้ฟอนต์อื่นอยู่ เปลี่ยนชื่อให้ตรงได้เลยครับ
+      int textX = (128 - u8g2.getStrWidth("REBOOTING...")) / 2;
+      u8g2.drawStr(textX, 35, "REBOOTING...");
+      u8g2.sendBuffer();
+      
+      Serial.println("⚠️ System Reboot Triggered Globally!");
+      
+      digitalWrite(buzzerPin, HIGH);
+      delay(1000); 
+      digitalWrite(buzzerPin, LOW);
+      
+      wdt_enable(WDTO_15MS); 
+      while(1); // ล็อคโปรแกรมรอ Watchdog ตัดไฟ
+    }
+    // ถ้ากดไม่ถึง 3 วินาที ฟังก์ชันจะจบการทำงานและปล่อยโปรแกรมรันต่อปกติ
+  }
 }
