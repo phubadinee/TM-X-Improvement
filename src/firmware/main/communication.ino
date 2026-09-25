@@ -6,14 +6,21 @@ char runTrigWaitTMX(int showlog) {
   
   char result = '0';
 
-  // เคลียร์บัฟเฟอร์ แต่ถ้ามีคำสั่ง <STOP> ค้างอยู่ให้ยกเลิกเลย
+  // ==========================================
+  // 1. เคลียร์บัฟเฟอร์: แต่ถ้าเจอคำสั่ง <PKG:...> ให้เก็บไว้ ห้ามทิ้งเด็ดขาด!
+  // ==========================================
   while (Serial.available() > 0) {
     String dump = Serial.readStringUntil('\n');
     dump.trim();
-    if (dump == "<STOP>") return 'X';
+    if (dump == "<STOP>") {
+      return 'X';
+    }
+    else if (dump.startsWith("<PKG:")) {
+      pendingPKG = dump; // เก็บใส่ตัวแปรพักข้อมูลไว้
+    }
   }
 
-  // ส่งคำสั่งถ่ายภาพ
+  // ส่งคำสั่งถ่ายภาพให้คอมพิวเตอร์/Raspberry Pi
   Serial.println("<TRIGGER_TMX>");
 
   bool receivedAck = false;
@@ -36,14 +43,25 @@ char runTrigWaitTMX(int showlog) {
         result = '0';
         receivedAck = true;
       }
-      // เพิ่มการดักจับ <STOP>
+      // ดักจับ <MEASURE_ERROR> จาก Pi
+      else if (response == "<MEASURE_ERROR>") {
+        Serial.println("⚠️ Measurement Error via Serial! (Requesting Retry)");
+        return 'E'; // ส่ง 'E' กลับไปให้ runStart ดึงก้านกลับแล้วเริ่มใหม่
+      }
+      // ดักจับ <STOP>
       else if (response == "<STOP>") {
         Serial.println("⚠️ Measurement Aborted via Serial!");
         return 'X'; // คืนค่า 'X' ทันที
       }
+      // ==========================================
+      // 2. ถ้า Pi ส่ง PKG มาระหว่างที่กล้องกำลังวัดผล ให้เก็บไว้เช่นกัน!
+      // ==========================================
+      else if (response.startsWith("<PKG:")) {
+        pendingPKG = response;
+      }
     }
 
-    // --- ตรวจจับปุ่มกด ---
+    // --- ตรวจจับปุ่มกด STOP/BACK ---
     if (digitalRead(STOP_BTN_PIN) == LOW) {
       delay(50);
       if (digitalRead(STOP_BTN_PIN) == LOW) {
@@ -51,6 +69,8 @@ char runTrigWaitTMX(int showlog) {
         return 'X';
       }
     }
+    
+    delay(5); // ให้ MCU ได้พักจังหวะ ป้องกัน Serial Buffer ทำงานหนักเกินไป
   }
 
   Serial.println("Measurement finished.");
@@ -117,79 +137,74 @@ void  runCommunicationTesting() {
 }
 
 
-
-// ฟังก์ชันรอรับข้อมูล Package จาก Serial
-// คืนค่ากลับมาเป็น 1, 2, หรือ 3 (ตามระยะที่จะให้ยืด) หากกด Stop จะคืนค่า -1
-// ฟังก์ชันรอรับข้อมูล Package จาก Serial
 int waitForPackageType() {
-  //  showActionMessage("Waiting Pkg Data...");
-  Serial.println("Waiting for <PKG:WxH> command...");
+  Serial.println("Waiting for <PKG:WxH:ID> command...");
 
   while (true) {
-
     checkEmergencyReboot();
-    
-    // 1. ตรวจสอบข้อมูลจาก Serial
-    if (Serial.available() > 0) {
-      String cmd = Serial.readStringUntil('\n');
-      cmd.trim(); // ตัดช่องว่างทิ้งรอบแรก
+    String cmd = "";
 
-      // เช็คว่าขึ้นต้นด้วย <PKG: และลงท้ายด้วย > หรือไม่
+    // โค้ดดึงข้อมูล (รองรับ pendingPKG จากวิธีครั้งที่แล้ว)
+    if (pendingPKG != "") {
+      cmd = pendingPKG;
+      pendingPKG = ""; 
+    } 
+    else if (Serial.available() > 0) {
+      cmd = Serial.readStringUntil('\n');
+      cmd.trim();
+    }
+
+    if (cmd != "") {
       if (cmd.startsWith("<PKG:") && cmd.endsWith(">")) {
+        // ตัด <PKG: และ > ทิ้ง จะเหลือแค่ "9x9:547" หรือ "9x9"
+        String data = cmd.substring(5, cmd.length() - 1);
+        data.trim();
 
-        // ตัดเอาเฉพาะข้อความข้างใน (เช่น <PKG:4x5> จะได้คำว่า 4x5)
-        String pkgSize = cmd.substring(5, cmd.length() - 1);
+        String pkgSize = "";
+        String itemID = "";
+        int colonIndex = data.indexOf(':');
 
-        // ==========================================
-        // [แก้ปัญหาที่นี่] ตัดช่องว่าง/อักขระซ่อนทิ้งอีกรอบ!
+        // แยกขนาด กับ ID ออกจากกัน (ถ้ารูปแบบเป็น 9x9:547)
+        if (colonIndex != -1) {
+            pkgSize = data.substring(0, colonIndex);
+            itemID = data.substring(colonIndex + 1);
+        } else {
+            // เผื่อไว้รองรับคำสั่งแบบเก่าที่ไม่มี ID (<PKG:9x9>)
+            pkgSize = data; 
+            itemID = "---";
+        }
+        
         pkgSize.trim();
-        // ==========================================
+        itemID.trim();
+        
+        lastReceivedItemID = itemID; // บันทึก ID ไว้ใช้งาน
 
-        // โชว์ผลลัพธ์โดยครอบ [ ] ไว้ เพื่อเช็คว่ามีช่องว่างซ่อนอยู่หรือไม่
         Serial.print("Received Package Size: [");
         Serial.print(pkgSize);
+        Serial.print("], Item ID: [");
+        Serial.print(itemID);
         Serial.println("]");
 
-        // เช็คในกลุ่มที่ 1
         for (int i = 0; i < sizeGroup1; i++) {
-          if (pkgSize == pkgGroup1[i]) {
-            lastReceivedPkg = pkgSize; // บันทึกชื่อจริงเก็บไว้
-            Serial.println("Matched: Group 1 (Short)");
-            return 1;
-          }
+          if (pkgSize == pkgGroup1[i]) { lastReceivedPkg = pkgSize; return 1; }
         }
-
-        // เช็คในกลุ่มที่ 2
         for (int i = 0; i < sizeGroup2; i++) {
-          if (pkgSize == pkgGroup2[i]) {
-            lastReceivedPkg = pkgSize; // บันทึกชื่อจริงเก็บไว้
-            Serial.println("Matched: Group 2 (Mid)");
-            return 2;
-          }
+          if (pkgSize == pkgGroup2[i]) { lastReceivedPkg = pkgSize; return 2; }
         }
-
-        // เช็คในกลุ่มที่ 3
         for (int i = 0; i < sizeGroup3; i++) {
-          if (pkgSize == pkgGroup3[i]) {
-            lastReceivedPkg = pkgSize; // บันทึกชื่อจริงเก็บไว้
-            Serial.println("Matched: Group 3 (Long)");
-            return 3;
-          }
+          if (pkgSize == pkgGroup3[i]) { lastReceivedPkg = pkgSize; return 3; }
         }
-
-        // ถ้าไม่ตรงกับลิสต์ไหนเลย ให้แจ้งเตือนและส่งค่า Default
+        
         Serial.println("⚠️ Unknown Package Size! Defaulting to Type 1");
         return 1;
       }
-
-      // ดักจับคำสั่ง <STOP>
       else if (cmd == "<STOP>") {
         Serial.println("⚠️ Aborted via Serial!");
         return -1;
       }
     }
 
-    // 2. ดักจับการกดปุ่ม STOP/BACK
+    // ดักจับปุ่มกด
     if (digitalRead(STOP_BTN_PIN) == LOW) {
       delay(50);
       if (digitalRead(STOP_BTN_PIN) == LOW) {
@@ -198,6 +213,8 @@ int waitForPackageType() {
         return -1;
       }
     }
+    
+    delay(5); // ให้ MCU ได้พักจังหวะ
   }
 }
 

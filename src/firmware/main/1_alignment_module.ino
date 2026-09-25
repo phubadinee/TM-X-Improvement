@@ -8,7 +8,6 @@ int read_st188() {
 
   return st188_val_map;
 }
-
 int runDetectPart(int showlog) {
   if (showlog == 1) {
     showActionMessage("Detecting Part...");
@@ -24,16 +23,20 @@ int runDetectPart(int showlog) {
 
     checkEmergencyReboot();
     
-    // หมายเหตุ: ปิดการโชว์คำว่า "No Part..." ในลูปไว้ถือว่าดีแล้วครับ 
-    // เพราะถ้าโชว์ตลอด จอจะกระพริบรัวๆ และทำให้ลูปอ่านเซ็นเซอร์ทำงานช้าลง
-    
-    // --- ตรวจจับคำสั่ง <STOP> ผ่าน Serial ---
+    // --- ตรวจจับคำสั่งผ่าน Serial ---
     if (Serial.available() > 0) {
       String cmd = Serial.readStringUntil('\n');
       cmd.trim();
+      
       if (cmd == "<STOP>") {
         Serial.println("⚠️ Detection Aborted via Serial!");
         return -1; // ส่งค่า -1 เพื่อบอกฟังก์ชันหลักให้หยุดทำงาน
+      }
+      // ==========================================
+      // [เพิ่มใหม่] ถ้า Pi ส่ง PKG มาระหว่างรอวางของ ให้เก็บใส่กระเป๋าไว้!
+      // ==========================================
+      else if (cmd.startsWith("<PKG:")) {
+        pendingPKG = cmd; 
       }
     }
 
@@ -47,6 +50,8 @@ int runDetectPart(int showlog) {
     }
 
     detect_val = read_st188();
+    
+    delay(5); // ให้ MCU ได้พักจังหวะ ป้องกันวงจรทำงานหนักเกินไป
   }
 
   Serial.println("======= [End] Detecting Part =======");
@@ -55,7 +60,6 @@ int runDetectPart(int showlog) {
   beep(100);
   
   // หน่วงเวลาแค่ 0.3 วินาที ให้ผู้ใช้งานดึงมือออกจากการวางชิ้นงาน 
-  // (ถ้าใช้ 1000ms ก้านจะรอนานเกินไปกว่าจะเริ่มดัน)
   delay(300); 
 
   return 1; // ส่ง 1 กลับไปแปลว่าเจอชิ้นงานปกติ

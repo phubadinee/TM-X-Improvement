@@ -43,6 +43,14 @@ void loadAllFromEEPROM() {
     EEPROM.put(EEPROM_ADDR_ST188 + 1, st188Threshold);
   }
 
+// 5. Mute Setting (Address 60)
+  if (EEPROM.read(EEPROM_ADDR_MUTE) == EEPROM_INIT_FLAG) {
+    EEPROM.get(EEPROM_ADDR_MUTE + 1, isMuted);
+  } else {
+    EEPROM.update(EEPROM_ADDR_MUTE, EEPROM_INIT_FLAG);
+    EEPROM.put(EEPROM_ADDR_MUTE + 1, isMuted);
+  }
+  
   Serial.println("Loaded All Settings from EEPROM");
 }
 
@@ -68,6 +76,10 @@ void saveAllToEEPROM() {
   // 4. ST188 Threshold
   EEPROM.update(EEPROM_ADDR_ST188, EEPROM_INIT_FLAG);
   EEPROM.put(EEPROM_ADDR_ST188 + 1, st188Threshold);
+
+  // 5. Mute Setting
+  EEPROM.update(EEPROM_ADDR_MUTE, EEPROM_INIT_FLAG);
+  EEPROM.put(EEPROM_ADDR_MUTE + 1, isMuted);
 
   Serial.println("Saved All Settings to EEPROM");
 }

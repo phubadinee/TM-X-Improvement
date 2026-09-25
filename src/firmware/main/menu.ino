@@ -107,6 +107,7 @@ void executeMenuAction() {
           case 1: setActuatorStroke(); break;
           case 2: setSorterOffset(); break;
           case 3: toggleAutoSortMenu(); break;
+          case 4: toggleMuteMenu(); break;
         }
         break;
 

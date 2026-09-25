@@ -12,6 +12,9 @@ unsigned long lastActivityTime = 0;
 const unsigned long SCREENSAVER_TIMEOUT = 180000; // เวลา 3 นาที (180,000 มิลลิวินาที)
 bool isScreensaverActive = false;
 
+const int EEPROM_ADDR_MUTE = 60; // Address ใหม่สำหรับเก็บสถานะ Mute
+bool isMuted = false;            // สถานะเสียง (false = มีเสียง, true = ปิดเสียง)
+
 // --- ขนาดรูปโลโก้ (แก้ให้ตรงกับขนาดภาพของคุณ) ---
 #define logo_width 128  // << เปลี่ยนความกว้างที่นี่
 #define logo_height 64 // << เปลี่ยนความสูงที่นี่
@@ -150,14 +153,19 @@ const unsigned long pauseDuration = 500; // เวลาหยุดพักเ
 // --- Package Communication Variable ---
 String lastReceivedPkg = "---";
 
-String pkgGroup1[] = {"9x9", "10x10"};   // ใช้ระยะยืด Short
-int sizeGroup1 = 2;
+const char* pkgGroup1[] = {"9x9"};    // ใช้ระยะยืด Short
+const int sizeGroup1 = sizeof(pkgGroup1) / sizeof(pkgGroup1[0]);
 
-String pkgGroup2[] = {"7x7", "8x8", "5x5"};     // ใช้ระยะยืด Mid
-int sizeGroup2 = 3;
+const char* pkgGroup2[] = {
+  "3x3", "3x4", "3.05x7.25", "3.5x3.75", "3.5x4.6", 
+  "3.5x3", "3.5x5", "4x4", "4x5", "4.25x4.25", 
+  "4.5x5.75", "5x5", "5.16x5.16", "6x6", "6.55x4.3", 
+  "7x7", "8x8", "9x15", "10x6.5"
+};      // ใช้ระยะยืด Mid
+const int sizeGroup2 = sizeof(pkgGroup2) / sizeof(pkgGroup2[0]);
 
-String pkgGroup3[] = {"4x5"};     // ใช้ระยะยืด Long
-int sizeGroup3 = 1;
+const char* pkgGroup3[] = {};      // ใช้ระยะยืด Long
+const int sizeGroup3 = sizeof(pkgGroup3) / sizeof(pkgGroup3[0]);
 
 // --- Small Servo: ความเร็วและองศาการผลัก ---
 int servo_stop = 90;
@@ -177,7 +185,7 @@ bool autoSortEnabled = true;
 const char* mainMenu[] = { "1. Start", "2. System Homing", "3. Calibration", "4. PM", "5. Module Function" };
 const int mainMenuSize = sizeof(mainMenu) / sizeof(mainMenu[0]);
 
-const char* calMenu[] = { "Part Detection", "Actuator Stroke", "Sorter Offset", "Auto Sort Mode"};
+const char* calMenu[] = { "Part Detection", "Actuator Stroke", "Sorter Offset", "Auto Sort Mode", "Sound"};
 const int calMenuSize = sizeof(calMenu) / sizeof(calMenu[0]);
 
 const char* pmMenu[] = {"IO Testing", "Manual Jogging", "Commu Testing", "Dry Run" };
@@ -219,6 +227,8 @@ int limit_servo_state = 0;
 
 // --- Communication States ---
 unsigned long lastSendTime = 0;
+String pendingPKG = ""; // ตัวแปรสำหรับเก็บคำสั่ง PKG ที่ส่งมาผิดจังหวะ
+String lastReceivedItemID = "---"; // << เพิ่มตัวแปรนี้
 
 void setup() {
   Serial.begin(115200);
@@ -230,8 +240,8 @@ void setup() {
   pinMode(enPin, OUTPUT);
 
   pinMode(limit_sorter, INPUT_PULLUP);
-  stepper.setMaxSpeed(800);
-  stepper.setAcceleration(400);
+  stepper.setMaxSpeed(500);      // ลดลงจาก 700 (ลองปรับลดลงเรื่อยๆ จนกว่ารางจะเลื่อนได้ปกติ)
+  stepper.setAcceleration(200);
 
   pinMode(CLK_PIN, INPUT_PULLUP);
   pinMode(DT_PIN, INPUT_PULLUP);

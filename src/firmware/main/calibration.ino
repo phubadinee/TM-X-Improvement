@@ -1,9 +1,9 @@
 void setActuatorStroke() {
-  int stepMovePWM = 30; 
+  int stepMovePWM = 30;
   int selectedItem = 0; // 0=Retract, 1=Short, 2=Mid, 3=Long, 4=Save & Exit
   bool adjustingMode = false;
-  
-  int tempPWM = servoPWM; 
+
+  int tempPWM = servoPWM;
   int currentFeedback = readPositionSmoothly();
 
   int scrollOffsetAdj = 0;
@@ -19,7 +19,7 @@ void setActuatorStroke() {
   while (true) {
 
     checkEmergencyReboot();
-    
+
     if (redraw) {
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_6x10_tf);
@@ -36,7 +36,7 @@ void setActuatorStroke() {
 
         for (int i = 0; i < maxVisibleAdj; i++) {
           int itemIndex = scrollOffsetAdj + i;
-          if (itemIndex > 4) break; 
+          if (itemIndex > 4) break;
           int yPos = 24 + (i * 12);
 
           if (itemIndex == selectedItem) {
@@ -49,7 +49,7 @@ void setActuatorStroke() {
 
           u8g2.setCursor(4, yPos);
           u8g2.print(strokeMenu[itemIndex]);
-          
+
           if (itemIndex < 4) {
             u8g2.print(": ");
             u8g2.print(strokeValues[itemIndex]);
@@ -67,7 +67,7 @@ void setActuatorStroke() {
 
         u8g2.setDrawColor(1);
         u8g2.setCursor(10, 35);
-        u8g2.print(strokeMenu[selectedItem]); 
+        u8g2.print(strokeMenu[selectedItem]);
 
         u8g2.setCursor(10, 50);
         u8g2.print("Set FB to: ");
@@ -84,7 +84,7 @@ void setActuatorStroke() {
 
     int clkState = digitalRead(CLK_PIN);
     if (clkState != lastClk && clkState == HIGH) {
-      if (millis() - lastRotaryTime > 5) { 
+      if (millis() - lastRotaryTime > 5) {
         int dtState = digitalRead(DT_PIN);
 
         if (!adjustingMode) {
@@ -99,7 +99,7 @@ void setActuatorStroke() {
 
           if (tempPWM < 900) tempPWM = 900;
           if (tempPWM > 2100) tempPWM = 2100;
-          actuator.writeMicroseconds(tempPWM); 
+          actuator.writeMicroseconds(tempPWM);
         }
         lastRotaryTime = millis();
       }
@@ -110,26 +110,26 @@ void setActuatorStroke() {
       delay(50);
       if (digitalRead(SW_PIN) == LOW) {
         if (!adjustingMode) {
-          if (selectedItem == 4) { 
+          if (selectedItem == 4) {
             // "Save & Exit"
             POS_RETRACTED = strokeValues[0];
             POS_EXTEND_SHORT = strokeValues[1];
             POS_EXTEND_MID = strokeValues[2];
             POS_EXTEND_LONG = strokeValues[3];
-            
+
             saveAllToEEPROM();
-            
+
             showActionMessage("  Stroke Saved!");
             for_beep_fast();
             delay(1000);
             while (digitalRead(SW_PIN) == LOW);
-            break; 
+            break;
           } else {
             // ========================================================
             // ฟีเจอร์ใหม่: วิ่งไปหาตำแหน่งล่าสุดอัตโนมัติ ก่อนให้ปรับจูนต่อ
             // ========================================================
             int targetFB = strokeValues[selectedItem];
-            
+
             // แสดงหน้าจอ "กำลังวิ่งไปที่ตำแหน่งเดิม"
             u8g2.clearBuffer();
             u8g2.setDrawColor(1);
@@ -146,26 +146,26 @@ void setActuatorStroke() {
             u8g2.sendBuffer();
 
             unsigned long moveStartTime = millis();
-            
+
             // ลูปค้นหาตำแหน่ง (ให้เวลาสูงสุด 5 วินาที ป้องกันมอเตอร์ค้าง)
             while (millis() - moveStartTime < 5000) {
               int currentFB = readPositionSmoothly();
-              
+
               // ถ้าระยะคลาดเคลื่อนไม่เกิน 5 แต้ม ถือว่าถึงที่หมายแล้ว
-              if (abs(currentFB - targetFB) <= 5) break; 
-              
-              if (currentFB > targetFB + 2) { 
+              if (abs(currentFB - targetFB) <= 5) break;
+
+              if (currentFB > targetFB + 2) {
                 if (servoPWM < 2100) servoPWM += 5; // เพิ่ม PWM เพื่อยืด
               } else if (currentFB < targetFB - 2) {
                 if (servoPWM > 900) servoPWM -= 5;  // ลด PWM เพื่อหด
               }
               actuator.writeMicroseconds(servoPWM);
               delay(10);
-              
+
               // ดักจับปุ่มกด (ถ้าอยากยกเลิกกลางคัน ให้กดปุ่ม Rotary หรือปุ่ม Back)
               if (digitalRead(STOP_BTN_PIN) == LOW || digitalRead(SW_PIN) == LOW) {
                 delay(100);
-                while(digitalRead(STOP_BTN_PIN) == LOW || digitalRead(SW_PIN) == LOW);
+                while (digitalRead(STOP_BTN_PIN) == LOW || digitalRead(SW_PIN) == LOW);
                 break;
               }
             }
@@ -178,9 +178,9 @@ void setActuatorStroke() {
         } else {
           // กดยืนยันการปรับค่าด้วยมือ
           currentFeedback = readPositionSmoothly();
-          strokeValues[selectedItem] = currentFeedback; 
-          servoPWM = tempPWM; 
-          
+          strokeValues[selectedItem] = currentFeedback;
+          servoPWM = tempPWM;
+
           adjustingMode = false;
           redraw = true;
         }
@@ -192,10 +192,10 @@ void setActuatorStroke() {
       delay(50);
       if (digitalRead(STOP_BTN_PIN) == LOW) {
         if (adjustingMode) {
-          adjustingMode = false; 
+          adjustingMode = false;
           redraw = true;
         } else {
-          break; 
+          break;
         }
         while (digitalRead(STOP_BTN_PIN) == LOW);
       }
@@ -237,7 +237,7 @@ void setSorterOffset() {
   while (true) {
 
     checkEmergencyReboot();
-    
+
     // 1. จัดการการวาดหน้าจอ OLED
     if (redraw) {
       u8g2.clearBuffer();
@@ -396,7 +396,7 @@ void toggleAutoSortMenu() {
   while (true) {
 
     checkEmergencyReboot();
-    
+
     if (redraw) {
       u8g2.clearBuffer();
       u8g2.setDrawColor(1);
@@ -409,7 +409,7 @@ void toggleAutoSortMenu() {
 
       u8g2.setDrawColor(1);
       u8g2.setFont(u8g2_font_8x13B_tf);
-      
+
       if (tempState) {
         u8g2.setCursor(35, 40);
         u8g2.print("[ ON ]");
@@ -439,13 +439,13 @@ void toggleAutoSortMenu() {
       delay(50);
       if (digitalRead(SW_PIN) == LOW) {
         autoSortEnabled = tempState;
-        
+
         // ========================================================
         // [แก้ไขตรงนี้] บันทึก Flag ก่อน แล้วค่อยบันทึกค่าที่ Address ถัดไป
-        EEPROM.update(EEPROM_ADDR_AUTOSORT, EEPROM_INIT_FLAG); 
-        EEPROM.put(EEPROM_ADDR_AUTOSORT + 1, autoSortEnabled); 
+        EEPROM.update(EEPROM_ADDR_AUTOSORT, EEPROM_INIT_FLAG);
+        EEPROM.put(EEPROM_ADDR_AUTOSORT + 1, autoSortEnabled);
         // ========================================================
-        
+
         showActionMessage("  Setting Saved!");
         for_beep_fast();
         while (digitalRead(SW_PIN) == LOW);
@@ -462,7 +462,7 @@ void toggleAutoSortMenu() {
       }
     }
   }
-  
+
   u8g2.clearBuffer();
   lastCursorIndex = -1;
 }
@@ -472,11 +472,11 @@ void setSensorST188() {
   int step = 0; // 0 = รออ่านค่าตอนไม่มีของ, 1 = รออ่านค่าตอนมีของ
   int valEmpty = 0;
   int valPart = 0;
-  
+
   while (true) {
 
     checkEmergencyReboot();
-    
+
     int currentVal = read_st188(); // อ่านค่าเรียลไทม์ (0-100)
 
     u8g2.clearBuffer();
@@ -485,13 +485,13 @@ void setSensorST188() {
     u8g2.drawBox(0, 0, 128, 18);
     u8g2.setDrawColor(0);
     u8g2.setFont(u8g2_font_6x10_tf);
-    
+
     const char* title = "CALIBRATE ST188";
     int titleX = (128 - u8g2.getStrWidth(title)) / 2;
     u8g2.drawStr(titleX, 13, title);
 
     u8g2.setDrawColor(1);
-    
+
     if (step == 0) {
       u8g2.drawStr(10, 35, "1. Clear Sensor"); // สเต็ป 1: เคลียร์แท่น
     } else {
@@ -514,18 +514,18 @@ void setSensorST188() {
           for_beep_fast();
         } else {
           valPart = currentVal;  // บันทึกค่ามีของ
-          
+
           // คำนวณค่ากึ่งกลาง (Threshold)
-          st188Threshold = (valEmpty + valPart) / 2; 
+          st188Threshold = (valEmpty + valPart) / 2;
           saveAllToEEPROM();   // บันทึกลง EEPROM
-          
+
           showActionMessage("  Threshold Saved!");
           for_beep_fast();
           delay(1000);
-          while(digitalRead(SW_PIN) == LOW);
+          while (digitalRead(SW_PIN) == LOW);
           break; // ออกจากฟังก์ชัน
         }
-        while(digitalRead(SW_PIN) == LOW);
+        while (digitalRead(SW_PIN) == LOW);
       }
     }
 
@@ -537,8 +537,82 @@ void setSensorST188() {
         break; // ออกจากฟังก์ชันโดยไม่เซฟ
       }
     }
-    
+
     delay(50); // กันจอภาพกระพริบรัวเกินไป
+  }
+
+  u8g2.clearBuffer();
+  lastCursorIndex = -1;
+}
+
+void toggleMuteMenu() {
+  bool tempState = isMuted;
+  int lastClk = digitalRead(CLK_PIN);
+  bool redraw = true;
+
+  while (true) {
+    checkEmergencyReboot();
+
+    if (redraw) {
+      u8g2.clearBuffer();
+      u8g2.setDrawColor(1);
+      u8g2.drawFrame(0, 0, 128, 64);
+      u8g2.drawBox(0, 0, 128, 18);
+      u8g2.setDrawColor(0);
+      u8g2.setFont(u8g2_font_6x10_tf);
+      u8g2.setCursor(22, 13);
+      u8g2.print("BUZZER MUTE");
+
+      u8g2.setDrawColor(1);
+      u8g2.setFont(u8g2_font_8x13B_tf);
+      
+      if (tempState) {
+        u8g2.setCursor(30, 40);
+        u8g2.print("[ MUTE ]"); // ปิดเสียงอยู่
+      } else {
+        u8g2.setCursor(25, 40);
+        u8g2.print("[ ACTIVE ]"); // เปิดเสียงปกติ
+      }
+
+      u8g2.setFont(u8g2_font_6x10_tf);
+      u8g2.setCursor(15, 58);
+      u8g2.print("Press SW to Save");
+
+      u8g2.sendBuffer();
+      redraw = false;
+    }
+
+    // หมุนเพื่อสลับ ON/OFF
+    int clkState = digitalRead(CLK_PIN);
+    if (clkState != lastClk && clkState == HIGH) {
+      tempState = !tempState; 
+      redraw = true;
+    }
+    lastClk = clkState;
+
+    // กดปุ่มเพื่อบันทึก
+    if (digitalRead(SW_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(SW_PIN) == LOW) {
+        isMuted = tempState;
+        saveAllToEEPROM(); // บันทึกลง EEPROM อัตโนมัติ
+        
+        showActionMessage("  Mute Saved!");
+        for_beep_fast(); // ถ้าไม่ได้เปิด Mute ตรงนี้จะมีเสียงติ๊ดสั้นๆ คอนเฟิร์ม
+        delay(1000);
+        while (digitalRead(SW_PIN) == LOW);
+        break;
+      }
+    }
+
+    // กด STOP เพื่อยกเลิก
+    if (digitalRead(STOP_BTN_PIN) == LOW) {
+      delay(50);
+      if (digitalRead(STOP_BTN_PIN) == LOW) {
+        while (digitalRead(STOP_BTN_PIN) == LOW);
+        break;
+      }
+    }
   }
   
   u8g2.clearBuffer();
